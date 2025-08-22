@@ -30,6 +30,10 @@ mariadb:
     enabled: true
     runAsUser: 1001
     runAsGroup: 1001
+  nodeSelector:
+    location: de
 
 redis:
   enabled: true
+  nodeSelector:
+    location: de
