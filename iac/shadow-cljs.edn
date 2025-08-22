@@ -1,0 +1,7 @@
+;; shadow-cljs.edn
+{:source-paths ["src/main"]
+ :dependencies []
+ :builds
+ {:app {:target :node-script
+        :output-to "index.js"
+        :main infra.core/main!}}}
