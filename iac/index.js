@@ -15,16 +15,16 @@ async function main() {
         hetznercsi.deployCsiDriver(provider);
         vault.deployVault(provider);
 
-        //const app = await nextcloud.deployNextcloudApp(kc, provider);
+        const app = await nextcloud.deployNextcloudApp(kc, provider);
         return {
-            //nextcloudUrl: app.nextcloudUrl,
+        nextcloudUrl: app.nextcloudUrl,
         };
     });
 
     return {
         masterIp: cluster.masterIp,
         kubeconfig: cluster.kubeconfig,
-        //nextcloudUrl: appOutputs.nextcloudUrl,
+        nextcloudUrl: appOutputs.nextcloudUrl,
     };
 }
 
