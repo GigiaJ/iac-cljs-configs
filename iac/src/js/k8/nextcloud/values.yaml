@@ -1,0 +1,35 @@
+ingress:
+  enabled: true
+  className: "traefik"
+  hosts:
+    - host: nextcloud.your-domain.com # This will be overwritten by Pulumi
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+
+nextcloud:
+  username: "admin"
+  nodeSelector:
+    location: de
+
+persistence:
+  enabled: true
+  size: 50Gi
+  storageClass: "hcloud-volumes"
+
+mariadb:
+  enabled: true
+  volumePermissions:
+    enabled: true
+    securityContext:
+      runAsUser: 0
+  securityContext:
+    enabled: true
+    fsGroup: 1001
+  containerSecurityContext:
+    enabled: true
+    runAsUser: 1001
+    runAsGroup: 1001
+
+redis:
+  enabled: true
