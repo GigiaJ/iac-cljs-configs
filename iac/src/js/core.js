@@ -11,11 +11,34 @@ exports.createCluster = function() {
     const sshKeyName = config.require("sshKeyName");
     const privateKey = config.requireSecret("privateKeySsh");
 
-    const installMasterScript = (publicIp) => `
+ const installMasterScript = (publicIp) => `
+        # Create the directory for custom manifests if it doesn't exist
+        mkdir -p /var/lib/rancher/k3s/server/manifests
+
+        # Create the Traefik configuration file to use NodePort
+        cat <<EOF > /var/lib/rancher/k3s/server/manifests/traefik-config.yaml
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    service:
+      spec:
+        type: NodePort
+    ports:
+      web:
+        nodePort: 30080
+      websecure:
+        nodePort: 30443
+EOF
+
         # Install k3s if it's not already present.
         if ! command -v k3s >/dev/null; then
           curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--flannel-backend=wireguard-native --node-external-ip=${publicIp}" sh -
         fi
+        
         # Wait until the kubeconfig is readable and a kubectl command succeeds.
         until sudo k3s kubectl get node > /dev/null 2>&1; do
             echo "Waiting for master node to be ready..."
