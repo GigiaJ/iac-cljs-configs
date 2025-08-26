@@ -10,7 +10,7 @@ const yaml = require("js-yaml");
  * @param {string} kubeconfig - The kubeconfig content for the cluster.
  * @param {k8s.Provider} provider - The Kubernetes provider to deploy resources with.
  */
-exports.deployNextcloudApp = async function(kubeconfig, provider) {
+exports.deployNextcloudApp = async function(provider) {
 
     const vaultConfig = new pulumi.Config("vault");
     const vaultAddress = vaultConfig.require("address");

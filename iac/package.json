@@ -2,6 +2,7 @@
     "name": "vultr-k8s",
     "main": "index.js",
     "scripts": {
+    "test": "npx shadow-cljs watch app",
     "build": "shadow-cljs release app",
     "pulumi": "pulumi up",
     "deploy": "npm run build && npm run pulumi"

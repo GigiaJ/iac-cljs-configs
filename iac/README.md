@@ -9,6 +9,8 @@ I'll try to include any pertinent documentation here in the tooling I use or the
 #### Upcoming
 Initially we'll try to migrate our services from a docker compose and into a reproducible and controlled deployment scheme here. I'll also likely break this into its own repo and instead reference it as a submodule in our dotfiles (because it makes far more sense that way).
 
+Since hcloud keeps (seriously, several times) making me wait for verification I've opted to go ahead and rewrite it into Clojurescript.
+
 #### Goals
 The long term goal is for this to be a mostly uninteractive, to completion set up of my cloud services. Since it'll be IaC should I ever choose down the road to migrate certain ones to local nodes I run then that effort should also be more or less feasible.
 
