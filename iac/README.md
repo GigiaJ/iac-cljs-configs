@@ -15,6 +15,35 @@ Since hcloud keeps (seriously, several times) making me wait for verification I'
 The long term goal is for this to be a mostly uninteractive, to completion set up of my cloud services. Since it'll be IaC should I ever choose down the road to migrate certain ones to local nodes I run then that effort should also be more or less feasible.
 
 
+### Initial requirements
+Pulumi and Node/NPM installed
+
+
+Then we need to set up the Pulumi stack 
+```
+pulumi stack init hetzner-k3s-cluster
+```
+
+Then we can move to setting our handful of Pulumi initializing secrets (right now we just set for local)
+
+If using hcloud then we need to get an API token from: https://console.hetzner.com/projects/<PROJECT-NUMBER-HERE>/security/tokens
+```
+pulumi config set hcloud:token <TOKEN-HERE>
+```
+
+
+If you don't have one you need to generate an SSH key.
+We need to also enter our SSH public keys onto hcloud for simplicity sake: https://console.hetzner.com/projects/<PROJECT-NUMBER-HERE>/security/sshkeys
+```
+pulumi config set sshKeyName <NAME-OF-SSH-KEY-IN-HCLOUD>
+```
+Need to supply Pulumi the private key which can be grabbed something like ```cat ~/.ssh/id_e25519 | pulumi config set privateKeySsh``` (didn't test just going off memory)
+
+
+If you have any others you want to add, you can add them in the same way
+I personally add one that is used in this like:
+```pulumi config set sshPersonalKeyName <PERSONAL-KEY-NAME-ON-HCLOUD>```
+
 
 
 ### Vault
