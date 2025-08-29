@@ -59,6 +59,7 @@
 (defn create-cluster []
   (let [cfg        (pulumi/Config.)
         ssh-key    (.require cfg "sshKeyName")
+        personal-key (.require cfg "sshPersonalKeyName")
         priv-key   (.requireSecret cfg "privateKeySsh")
 
         firewall   (hcloud/Firewall.
@@ -73,7 +74,7 @@
                     (clj->js {:serverType "cx22"
                               :image "ubuntu-22.04"
                               :location "fsn1"
-                              :sshKeys [ssh-key]
+                              :sshKeys [ssh-key personal-key]
                               :firewallIds [(.-id firewall)]}))
 
         master-ip  (.-ipv4Address master)
@@ -96,16 +97,19 @@
                    :create "sudo cat /var/lib/rancher/k3s/server/node-token"})
          (clj->js {:dependsOn [install-master]}))
 
-        worker-script
-        (.apply (pulumi/all [master-ip (.-stdout token-cmd)])
-                (fn [[ip token]] (install-worker-script ip (.trim token))))
+       worker-script
+       (.apply master-ip
+               (fn [ip]
+                 (.apply (.-stdout token-cmd)
+                         (fn [token]
+                           (install-worker-script ip (.trim token))))))
 
         worker-de  (hcloud/Server.
                     "k3s-worker-de"
                     (clj->js {:serverType "cx22"
                               :image "ubuntu-22.04"
                               :location "fsn1"
-                              :sshKeys [ssh-key]
+                              :sshKeys [ssh-key personal-key]
                               :userData worker-script
                               :firewallIds [(.-id firewall)]}))
 
@@ -114,7 +118,7 @@
                     (clj->js {:serverType "cpx11"
                               :image "ubuntu-22.04"
                               :location "ash"
-                              :sshKeys [ssh-key]
+                              :sshKeys [ssh-key personal-key]
                               :userData worker-script
                               :firewallIds [(.-id firewall)]}))
 
@@ -125,18 +129,20 @@
                    :create (.apply master-ip
                                    (fn [ip]
                                      (str "sudo sed 's/127.0.0.1/" ip "/' /etc/rancher/k3s/k3s.yaml")))})
-         (clj->js {:dependsOn [install-master]}))
+         (clj->js {:dependsOn [install-master worker-de worker-us]}))
 
         label-node
-        (local/Command.
-         "label-german-node"
-         (clj->js {:create (.apply (pulumi/all [(.-stdout kubeconfig-cmd) (.-name worker-de)])
-                                   (fn [[kubeconfig worker-name]]
-                                     (let [path "./kubeconfig.yaml"]
-                                       (.writeFileSync fs path kubeconfig)
-                                       (str "kubectl --kubeconfig=" path
-                                            " label node " worker-name
-                                            " location=de --overwrite"))))})
+(local/Command.
+ "label-german-node-alt"
+ (clj->js {:create (.apply (.-stdout kubeconfig-cmd)
+                           (fn [kubeconfig]
+                             (.apply (.-name worker-de)
+                                     (fn [worker-name]
+                                       (let [path "./kubeconfig.yaml"]
+                                         (.writeFileSync fs path kubeconfig)
+                                         (str "kubectl --kubeconfig=" path
+                                              " label node " worker-name
+                                              " location=de --overwrite"))))))})
          (clj->js {:dependsOn [kubeconfig-cmd]}))]
 
     {:masterIp master-ip
