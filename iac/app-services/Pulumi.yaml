@@ -1,0 +1,11 @@
+name: hetzner-k3s
+description: A multi-region k3s cluster on Hetzner Cloud
+runtime:
+  name: nodejs
+  options:
+    packagemanager: npm
+main: out/services.js
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: typescript

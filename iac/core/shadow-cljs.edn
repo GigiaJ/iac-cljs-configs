@@ -1,0 +1,8 @@
+{:source-paths ["../src/main"]
+ :dependencies []
+ :builds
+ {:app {:target :node-script
+        :output-to "../out/init.js"
+        :compiler-options {:optimizations :simple}
+        :release {:source-maps true}
+        :main core/init!}}}

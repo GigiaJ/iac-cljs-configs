@@ -1,23 +1,22 @@
 {
-    "name": "vultr-k8s",
-    "main": "index.js",
-    "scripts": {
+  "name": "my-pulumi-iac-monorepo",
+  "private": true,
+  "workspaces": [
+    "core",
+    "app-services"
+  ],
+  "scripts": {
     "test": "npx shadow-cljs watch app",
-    "build": "shadow-cljs release app",
-    "pulumi": "pulumi up",
+    "build:core": "npm run build -w core",
+    "build:services": "npm run build -w app-services",
+    "up:core": "pulumi up -C ./out",
+    "up:services": "pulumi up -C ./app-services",
+    "destroy": "pulumi destroy -C ./app-services",
     "deploy": "npm run build && npm run pulumi"
-    },
-    "devDependencies": {
+  },
+      "devDependencies": {
         "@types/node": "^18",
         "shadow-cljs": "^2.20.0",
         "typescript": "^5.0.0"
-    },
-    "dependencies": {
-        "@pulumi/pulumi": "^3.113.0",
-        "@pulumi/hcloud": "^1.24.0",
-        "@pulumi/esc-sdk": "0.12.1",
-        "@pulumi/command": "^1.1.0",
-        "@pulumi/kubernetes": "^4.23.0",
-        "@pulumi/vault": "^7.2.1"
     }
 }

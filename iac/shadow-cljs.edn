@@ -1,6 +1,0 @@
-{:source-paths ["src/main"]
- :dependencies []
- :builds
- {:app {:target :node-script
-        :output-to "index.js"
-        :main core/main!}}}

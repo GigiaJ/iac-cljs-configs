@@ -1,0 +1,17 @@
+ui:
+  enabled: true
+
+server:
+  standalone:
+    enabled: true
+  
+  ha:
+    enabled: false
+
+  dataStorage:
+      enabled: true
+      size: 2Gi
+      storageClass: "hcloud-volumes"
+  
+  nodeSelector:
+    location: "de"
