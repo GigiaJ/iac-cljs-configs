@@ -48,7 +48,7 @@
                                               "mariadb-password"      (get-secret-val nextcloud-secrets "dbPassword")}})
                        (clj->js {:provider provider}))
 
-        values-path (.join path js/__dirname "resources" "nextcloud.yml")
+        values-path (.join path js/__dirname ".." "resources" "nextcloud.yml")
         helm-values (-> values-path
                         (fs/readFileSync "utf8")
                         (yaml/load))
