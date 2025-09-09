@@ -134,16 +134,28 @@
         label-node
 (local/Command.
  "label-german-node-alt"
- (clj->js {:create (.apply (.-stdout kubeconfig-cmd)
-                           (fn [kubeconfig]
-                             (.apply (.-name worker-de)
-                                     (fn [worker-name]
-                                       (let [path "./kubeconfig.yaml"]
-                                         (.writeFileSync fs path kubeconfig)
-                                         (str "kubectl --kubeconfig=" path
-                                              " label node " worker-name
-                                              " location=de --overwrite"))))))})
-         (clj->js {:dependsOn [kubeconfig-cmd]}))]
+ (clj->js
+  {:create (.apply (.-stdout kubeconfig-cmd)
+                   (fn [kubeconfig]
+                     (.apply (.-name worker-de)
+                             (fn [worker-name]
+                               (let [path "./kubeconfig.yaml"]
+                                 (.writeFileSync fs path kubeconfig)
+                                 (str
+                                  "for i in {1..30}; do "
+                                  "  if kubectl --kubeconfig=" path " get node " worker-name " > /dev/null 2>&1; then "
+                                  "    echo 'Node " worker-name " found, proceeding with label.' && "
+                                  "    kubectl --kubeconfig=" path " label node " worker-name " location=de --overwrite && "
+                                  "    exit 0; "
+                                  "  else "
+                                  "    echo 'Node " worker-name " not ready yet. Waiting 10s... (Attempt: '\"$i\"'/30)'; "
+                                  "    sleep 10; "
+                                  "  fi; "
+                                  "done; "
+                                  "echo 'Error: Timed out waiting for node " worker-name ".' >&2 && "
+                                  "exit 1;"))))))})
+ (clj->js {:dependsOn [kubeconfig-cmd worker-de]}))
+        ]
 
     {:masterIp master-ip
               :workerDeIp (.-ipv4Address worker-de)
