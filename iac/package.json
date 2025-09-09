@@ -9,8 +9,10 @@
     "test": "npx shadow-cljs watch app",
     "build:core": "npm run build -w core",
     "build:services": "npm run build -w app-services",
-    "up:core": "pulumi up -C ./out",
+    "up:core": "pulumi up -C ./core",
     "up:services": "pulumi up -C ./app-services",
+    "refresh:core": "pulumi refresh -C ./core",
+    "refresh:services": "pulumi refresh -C ./core",
     "destroy": "pulumi destroy -C ./app-services",
     "deploy": "npm run build && npm run pulumi"
   },
