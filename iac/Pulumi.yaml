@@ -4,6 +4,7 @@ runtime:
   name: nodejs
   options:
     packagemanager: npm
+main: ./out/index.js
 config:
   pulumi:tags:
     value:
