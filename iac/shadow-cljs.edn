@@ -1,0 +1,12 @@
+{:source-paths ["./src/main"]
+ :dependencies [[funcool/promesa "11.0.678"]]
+ :builds
+ {:app {;;:target :node-library
+;;       :modules {:main {:entries [base]}}
+;;       :exports {:deployCore base/deploy-core}
+        :target :node-script
+        :output-to "./out/index.js"
+        :compiler-options {:optimizations :simple}
+        :release {:source-maps true}
+        :main core/main!}}}
+
