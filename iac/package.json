@@ -8,7 +8,9 @@
   "scripts": {
     "test": "npx shadow-cljs watch app",
     "build:core": "npm run build -w core",
+    "build": "npx shadow-cljs release app",
     "build:services": "npm run build -w app-services",
+    "auto": "node ./index.js",
     "up:core": "pulumi up -C ./core",
     "up:services": "pulumi up -C ./app-services",
     "refresh:core": "pulumi refresh -C ./core",
