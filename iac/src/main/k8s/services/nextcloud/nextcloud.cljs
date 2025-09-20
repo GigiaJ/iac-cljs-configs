@@ -17,16 +17,15 @@
   "Deploy Nextcloud using direct vault connection info."
   [provider vault-params]
   (let [core-v1 (.. k8s -core -v1)
-        helm-v3 (.. k8s -helm -v3)
-
+        helm-v3 (.. k8s -helm -v3) 
+        stack-ref (new pulumi/StackReference "cluster") 
         vault-provider (new vault/Provider
                             "vault-provider"
-                            (clj->js vault-params))
-
+                            (clj->js {:address (.getOutput stack-ref "vaultAddress")
+                                      :token   (.getOutput stack-ref "vaultToken")}))
         nextcloud-secrets (.getSecret (.-generic vault)
                                       (clj->js {:path "secret/nextcloud"})
-                                      (clj->js {:provider  vault-provider
-                                                :dependsOn [(get vault-params :vault-port-forward)]}))
+                                      (clj->js {:provider  vault-provider}))
 
         ns (new (.. core-v1 -Namespace)
                 "nextcloud-ns"
