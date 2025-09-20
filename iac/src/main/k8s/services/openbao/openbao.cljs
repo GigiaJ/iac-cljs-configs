@@ -304,26 +304,12 @@
         (new local/Command
              "get-root-token"
              (clj->js {:create "cat /tmp/openbao-root-token 2>/dev/null || echo 'TOKEN_NOT_FOUND'"})
-             (clj->js {:dependsOn [init-command]}))
-
-        port-forward-command
-        (new local/Command
-             "openbao-port-forward"
-             (clj->js {:create (str "#!/bin/bash\n"
-                                    "echo 'OpenBao is ready for access via port-forward'\n"
-                                    "echo 'Run: kubectl --kubeconfig=" kubeconfig " port-forward -n vault svc/openbao 8200:8200'\n"
-                                    "echo 'Then access OpenBao at: http://127.0.0.1:8200'\n")
-                       :environment (clj->js {:KUBECONFIG "./kubeconfig.yaml"})})
              (clj->js {:dependsOn [setup-secrets-command]}))]
-
-    (clj->js {:namespace vault-ns
-              :chart chart
-              :root-token (.-stdout root-token-command)
-              :address "http://127.0.0.1:8200"
-              :ready-check wait-ready-command
-              :init-command init-command
-              :setup-secrets setup-secrets-command
-              :port-forward-info port-forward-command})))
+                                 {
+                                  :root-token (.-stdout root-token-command)
+                                  :address "http://127.0.0.1:8200"
+                                  }
+                                 ))
 
 (defn configure-vault-access
   "Configure Pulumi config with OpenBao credentials after deployment"
