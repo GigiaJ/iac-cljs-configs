@@ -27,10 +27,8 @@
           _ (.setConfig core-stack "hetzner-k3s:sshKeyName" #js {:value (-> cfg :sshKeyName) :secret false})
           _ (.setConfig core-stack "hetzner-k3s:sshPersonalKeyName" #js {:value (-> cfg :sshPersonalKeyName) :secret false})
           _ (.setConfig core-stack "hcloud:token" #js {:value (-> cfg :hcloudToken) :secret true})
-          _ (.setConfig core-stack "hetzner-k3s:privateKeySsh" #js {:value (-> cfg :privateKeySsh) :secret true})
-          _ (println "Check1?")
-          core-result (.up core-stack #js {:onOutput println})
-          _ (println "Check2?")
+          _ (.setConfig core-stack "hetzner-k3s:privateKeySsh" #js {:value (-> cfg :privateKeySsh) :secret true}) 
+          core-result (.up core-stack #js {:onOutput println}) 
 
           core-outputs (.outputs core-stack)
           vault-address (-> core-outputs (aget "vaultAddress") (.-value))
@@ -45,8 +43,6 @@
                                       "8200:8200"
                                       "-n"
                                       "vault"]) 
-
-          _ (println "WE ARE PORTFORWARDED ONLY IN THEORY")
 
           _ (p/delay 2000)
           app-stack  (.createOrSelectStack pulumi-auto/LocalWorkspace
