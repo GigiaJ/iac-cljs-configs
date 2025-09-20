@@ -13,7 +13,7 @@
   "Deploy applications with proper dependency chain"
   [provider kubeconfig apps]
   (let [vault-result (vault/deploy-vault provider kubeconfig)
-        vault-params {:address (aget vault-result "address") :token (aget vault-result "root_token") :vault-port-forward (aget vault-result "port_forward_manager")}
+        vault-params {:address (get vault-result :address) :token (get vault-result :root-token)}
         app-results (if (nil? apps) {} (apps provider vault-params))]
     (assoc app-results :vault vault-result)))
 
@@ -28,7 +28,9 @@
                                                (clj->js {:kubeconfig kc}))]
                              (hetznercsi/deploy-csi-driver provider)
                              (resolve
-                              (if (nil? apps) (app-deployments provider kc nil) (app-deployments provider kc apps))))))))]
+                              (if (nil? apps)
+                                (app-deployments provider kc nil)
+                                (app-deployments provider kc apps))))))))]
     {:cluster cluster :setup setup}))
 
 (defn build-exports [init]
@@ -38,8 +40,8 @@
      :masterIp     (get cluster :masterIp)
      :workerDeIp   (get cluster :workerDeIp)
      :workerUsIp   (get cluster :workerUsIp)
-     :vaultAddress (.apply app-outputs #(get-in % [:vault :address]))
-     :vaultToken   (.apply app-outputs #(get-in % [:vault :root-token]))
+     :vaultAddress (pulumi/output (.apply app-outputs #(get-in % [:vault :address])))
+     :vaultToken   (pulumi/output (.apply app-outputs #(get-in % [:vault :root-token])))
      }))
 
 
