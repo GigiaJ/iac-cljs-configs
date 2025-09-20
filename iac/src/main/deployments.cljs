@@ -9,10 +9,18 @@
   (let [nextcloud-result (nextcloud/deploy-nextcloud provider vault-params)]
     {:nextcloud nextcloud-result}))
 
-(defn extended-exports [app-outputs exports]
-  (assoc exports :nextcloudUrl (.apply app-outputs #(get-in % [:nextcloud :nextcloud-url]))))
+(defn extended-exports [init] 
+  (let [exports (base.build-exports init)
+        app-outputs (get init :setup)]
+    (assoc exports :nextcloudUrl (.apply app-outputs #(get-in % [:nextcloud :nextcloud-url])))))
 
-(defn deploy-services []
+(defn quick-deploy []
+  (->
+   (base/initialize app-list) 
+   (extended-exports)
+   (clj->js)))
+
+#_(defn deploy-services []
   (let [init (base/initialize app-list)]
     (set! (.-exports js/module)
           (clj->js (extended-exports (get init :setup) (base.build-exports init))))))
