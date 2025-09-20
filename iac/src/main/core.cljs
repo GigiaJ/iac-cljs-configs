@@ -15,48 +15,55 @@
                        :workDir "/home/jaggar/dotfiles/iac"
                        :program base/quick-deploy}))
 
+(def deployment-stack (clj->js  {:projectName "hetzner-k3s"
+                           :stackName "cluster"
+                           :workDir "/home/jaggar/dotfiles/iac"
+                           :program deployments/quick-deploy}))
+
 (defn run []
-  (p/let [
-          _ (println "Deploying cluster")
+  (p/let [_ (println "Deploying cluster")
           core-stack  (.createOrSelectStack pulumi-auto/LocalWorkspace
                                             init-stack)
-          _ (.setConfig core-stack "hetzner-k3s:sshKeyName" #js {:value (-> cfg :sshKeyName) :secret false}) 
+          _ (.setConfig core-stack "hetzner-k3s:sshKeyName" #js {:value (-> cfg :sshKeyName) :secret false})
           _ (.setConfig core-stack "hetzner-k3s:sshPersonalKeyName" #js {:value (-> cfg :sshPersonalKeyName) :secret false})
           _ (.setConfig core-stack "hcloud:token" #js {:value (-> cfg :hcloudToken) :secret true})
           _ (.setConfig core-stack "hetzner-k3s:privateKeySsh" #js {:value (-> cfg :privateKeySsh) :secret true})
           _ (println "Check1?")
-          up-result (.up core-stack #js {:onOutput println})
+          core-result (.up core-stack #js {:onOutput println})
           _ (println "Check2?")
 
-          outputs (.outputs core-stack)
-          _ (println outputs)
-         ;; service-name (-> outputs (aget "serviceName") (aget "value"))
-         ;; namespace (-> outputs (aget "namespace") (aget "value"))
-         ;; _ (println (str "-> Service Name: " service-name ", Namespace: " namespace))
+          core-outputs (.outputs core-stack)
+          vault-address (-> core-outputs (aget "vaultAddress") (.-value))
+          vault-token   (-> core-outputs (aget "vaultToken") (.-value))
+          kubeconfig    (-> core-outputs (aget "kubeconfig") (.-value))
 
-          ;; Start port-forward
-         ;; _ (println "Starting kubectl port-forward...")
-          ;;port-forward (cp/spawn "kubectl"
-            ;;                     #js ["port-forward"
-              ;;                        (str "svc/" service-name)
-                ;;                      "8080:80"
-                  ;;                    "-n"
-                    ;;                  namespace])
-        ;;  _ (p/delay 3000)
+          _ (println core-outputs)
+          port-forward (cp/spawn "kubectl"
+                                 #js ["--kubeconfig=kubeconfig.yaml"
+                                      "port-forward"
+                                      "svc/openbao"
+                                      "8200:8200"
+                                      "-n"
+                                      "vault"]) 
 
-          ;; Deploy Stack B
-         ;; _ (println "Deploying application stack")
-          ;;app-stack (p/await (pulumi-auto/LocalWorkspace.createOrSelectStack
-            ;;                  #js {:stackName "hetzner-k3s-cluster"
-              ;;                     :projectName ""
-                ;;                   :program #(p/promise (deployments/deploy-services))}))
-         ;; _ (p/await (.preview app-stack))
-          ;; _ (println "Application stack deployment complete.")
-          
-          ;; Clean up
-          ;;_ (.kill port-forward)
-         ;; _ (println "Cleaned up port-forward process.")
-          ]
+          _ (println "WE ARE PORTFORWARDED ONLY IN THEORY")
+
+          _ (p/delay 2000)
+          app-stack  (.createOrSelectStack pulumi-auto/LocalWorkspace
+                                           deployment-stack)
+          _ (.setConfig app-stack "hetzner-k3s:sshKeyName" #js {:value (-> cfg :sshKeyName) :secret false})
+          _ (.setConfig app-stack "hetzner-k3s:sshPersonalKeyName" #js {:value (-> cfg :sshPersonalKeyName) :secret false})
+          _ (.setConfig app-stack "hcloud:token" #js {:value (-> cfg :hcloudToken) :secret true})
+          _ (.setConfig app-stack "hetzner-k3s:privateKeySsh" #js {:value (-> cfg :privateKeySsh) :secret true})
+          _ (.setConfig app-stack "kubeconfig" #js {:value kubeconfig :secret true})
+          _ (.setConfig app-stack "vault:token" #js {:value vault-token :secret true})
+          _ (.setConfig app-stack "vault:address" #js {:value vault-address :secret true})
+
+          app-result (.up app-stack #js {:onOutput println})
+
+          app-outputs (.outputs app-stack)
+          _ (println app-outputs)
+          _ (.kill port-forward)]
 
     ;; This final value is returned when the p/let chain completes
     "All stacks deployed and cleaned up successfully."))
