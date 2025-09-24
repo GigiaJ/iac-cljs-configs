@@ -1,6 +1,4 @@
-## Infrastructure as Code using Pulumi (will swap it to Clojurescript after I get it stable)
-To preface, writing it initially in Clojurescript without an immaculate handle on Pulumi is not the best idea. Easier to do it in Javascript for the sake of having docs to reference.
-
+## Infrastructure as Code using Pulumi in Clojurescript
 My cluster configuration that serves to automate the deployment and handling of my services that I use for personal and public tasks. The goal initially of this is to both reduce my cost overhead (I was using vultr), improve reproducibility (we love Guix after all), increase stability as any change prior was changing a docker compose and potentially bringing services down on any mistakes (Caddy being the central funnel was a blessing and a curse), as well as improve security as our secrets and such can now be contained in OpenBao (Hashicorp Vault, but open source and maintained by the Linux Foundation).
 
 I'll try to include any pertinent documentation here in the tooling I use or the setup.
@@ -9,92 +7,65 @@ I'll try to include any pertinent documentation here in the tooling I use or the
 #### Upcoming
 Initially we'll try to migrate our services from a docker compose and into a reproducible and controlled deployment scheme here. I'll also likely break this into its own repo and instead reference it as a submodule in our dotfiles (because it makes far more sense that way).
 
-Since hcloud keeps (seriously, several times) making me wait for verification I've opted to go ahead and rewrite it into Clojurescript.
+
 
 #### Goals
 The long term goal is for this to be a mostly uninteractive, to completion set up of my cloud services. Since it'll be IaC should I ever choose down the road to migrate certain ones to local nodes I run then that effort should also be more or less feasible.
 
 
 ### Initial requirements
+#### Need to Revise as we swapped to using Pulumi Automation API so the entire process is automated
+
 Pulumi and Node/NPM installed
 
 
 Then we need to set up the Pulumi stack 
-```
-pulumi stack init hetzner-k3s-cluster
-```
+
 
 Then we can move to setting our handful of Pulumi initializing secrets (right now we just set for local)
 
 If using hcloud then we need to get an API token from: https://console.hetzner.com/projects/<PROJECT-NUMBER-HERE>/security/tokens
+
+Add that token to your .env file
 ```
-pulumi config set hcloud:token <TOKEN-HERE>
+export HCLOUD_TOKEN=<TOKENHERE>
 ```
 
 
 If you don't have one you need to generate an SSH key.
 We need to also enter our SSH public keys onto hcloud for simplicity sake: https://console.hetzner.com/projects/<PROJECT-NUMBER-HERE>/security/sshkeys
-```
-pulumi config set sshKeyName <NAME-OF-SSH-KEY-IN-HCLOUD>
-```
-Need to supply Pulumi the private key which can be grabbed something like ```cat ~/.ssh/id_e25519 | pulumi config set privateKeySsh``` (didn't test just going off memory)
 
+Add this to your .env file
+```
+export SSH_KEY_NAME=<NAME-OF-SSH-KEY-IN-HCLOUD>
+```
 
+Need to supply Pulumi the private key which can be grabbed something like 
+```
+echo "export PRIVATE_KEY=\"$(base64 -w 0 < ~/.ssh/id_ed25519)\"" >> .env
+```
 If you have any others you want to add, you can add them in the same way
-I personally add one that is used in this like:
-```pulumi config set sshPersonalKeyName <PERSONAL-KEY-NAME-ON-HCLOUD>```
+
+Now you can do 
+```
+source .env
+
+npm run deploy
+```
+Pulumi should be forced to set-up the stack and such due to the Automation API, so you can sit back and watch it be fully initialized.
+
+As I add services over from my compose I'll detail the needs initialization needs.
 
 
 
 ### Vault
-Vault set up requires doing this when it gets everything provisioned (you'll have to cancel the pulumi up)
 
-Run this:
-```pulumi stack output kubeconfig --show-secrets > kubeconfig.yaml  ```
+Vault will swap to using Wasabi S3 for the backend since it'll coordinate well with NAS auto-backups I already have configured for redundancy of the S3.
+So Vault is only needed to be set-up once ever ideally. After the dummy values are updated and refreshed on the services you should be able to control and cycle through modifying Vault any secrets as needed.
 
-
-```
-kubectl --kubeconfig=kubeconfig.yaml exec -n vault -it vault-0 -- /bin/sh
-```
-
-Inside the new shell:
-```
-vault operator init
-
-vault operator unseal <PASTE_UNSEAL_KEY_1>
-vault operator unseal <PASTE_UNSEAL_KEY_2>
-vault operator unseal <PASTE_UNSEAL_KEY_3>
-```
-
-Then you need to run:
+To access the vault from your local -because opening it publicly would be a bad idea- you need to run:
 ```
 kubectl --kubeconfig=kubeconfig.yaml port-forward -n vault vault-0 8200:8200
 ```
-This enables us to access the openbao UI in our browser
-
-Open a new terminal window (leave that one open as it establishes a connection to the vault)
-Run the following:
-```
-export VAULT_ADDR='http://127.0.0.1:8200'
-export VAULT_TOKEN='<PASTE_YOUR_INITIAL_ROOT_TOKEN>'
-```
-
-Open another terminal and connect to the pod 
-```
-kubectl --kubeconfig=kubeconfig.yaml exec -it openbao-0 -n vault -- /bin/sh
-```
-then run:
-```
-# Set your token
-export BAO_TOKEN='<PASTE_YOUR_INITIAL_ROOT_TOKEN>'
-# Enables secrets
-vault secrets enable -path=secret kv-v2
-```
-Just enables kv-v2 secrets engine
-
-You can then do:
-```
-bao kv put secret/nextcloud adminPassword="..." dbPassword="..."
-```
-
-or just use the UI in your browser at 127.0.0.1:8200 since you're portforwarded to it
+This enables us to access the openbao UI in our browser.
+You can add secrets from this interface or if you want you can connect to the pod directly and run OpenBao CLI commands.
