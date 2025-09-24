@@ -16,7 +16,7 @@
     "refresh:core": "pulumi refresh -C ./core",
     "refresh:services": "pulumi refresh -C ./core",
     "destroy": "pulumi destroy -C ./app-services",
-    "deploy": "npm run build && npm run pulumi"
+    "deploy": "npm run build && npm run auto"
   },
       "devDependencies": {
         "@types/node": "^18",
