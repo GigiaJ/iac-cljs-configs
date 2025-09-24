@@ -1,4 +1,4 @@
-(ns k8s.services.openbao.openbao
+(ns k8s.services.openbao.service
   (:require
    ["@pulumi/kubernetes" :as k8s]
    ["@pulumi/pulumi" :as pulumi]

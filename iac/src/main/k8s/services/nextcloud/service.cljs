@@ -1,4 +1,4 @@
-(ns k8s.services.nextcloud.nextcloud
+(ns k8s.services.nextcloud.service
   (:require
    ["@pulumi/kubernetes" :as k8s]
    ["@pulumi/pulumi" :as pulumi]
@@ -15,14 +15,9 @@
 
 (defn deploy-nextcloud
   "Deploy Nextcloud using direct vault connection info."
-  [provider vault-params]
+  [provider vault-provider]
   (let [core-v1 (.. k8s -core -v1)
         helm-v3 (.. k8s -helm -v3) 
-        stack-ref (new pulumi/StackReference "cluster") 
-        vault-provider (new vault/Provider
-                            "vault-provider"
-                            (clj->js {:address (.getOutput stack-ref "vaultAddress")
-                                      :token   (.getOutput stack-ref "vaultToken")}))
         nextcloud-secrets (.getSecret (.-generic vault)
                                       (clj->js {:path "secret/nextcloud"})
                                       (clj->js {:provider  vault-provider}))
@@ -56,13 +51,13 @@
                 (get-secret-val nextcloud-secrets "host"))
 
         chart (new (.. helm-v3 -Chart)
-                   "my-nextcloud"
+                   "nextcloud"
                    (clj->js {:chart     "nextcloud"
                              :fetchOpts {:repo "https://nextcloud.github.io/helm/"}
                              :namespace (.. ns -metadata -name)
                              :values    helm-values})
                    (clj->js {:provider provider
-                             :dependsOn [admin-secret db-secret (clj->js (get vault-params :vault-port-forward))]}))]
+                             :dependsOn [admin-secret db-secret]}))]
 
     {:namespace    ns
      :admin-secret admin-secret
