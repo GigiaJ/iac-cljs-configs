@@ -2,11 +2,16 @@
   (:require
    ["@pulumi/pulumi" :as pulumi]
    [base :as base]
-   [k8s.services.nextcloud.nextcloud :as nextcloud]))
+   [k8s.services.nextcloud.service :as nextcloud-service]))
 
 
-(defn app-list [provider vault-params]
-  (let [nextcloud-result (nextcloud/deploy-nextcloud provider vault-params)]
+(defn app-list [provider]
+  (let [stack-ref (new pulumi/StackReference "cluster")
+        vault-provider (new vault/Provider
+                            "vault-provider"
+                            (clj->js {:address (.getOutput stack-ref "vaultAddress")
+                                      :token   (.getOutput stack-ref "vaultToken")}))
+        nextcloud-result (nextcloud-service/deploy-nextcloud provider vault-provider)]
     {:nextcloud nextcloud-result}))
 
 (defn extended-exports [init] 
