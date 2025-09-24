@@ -1,6 +1,7 @@
 (ns deployments
   (:require
    ["@pulumi/pulumi" :as pulumi]
+   ["@pulumi/vault" :as vault]
    [base :as base]
    [k8s.services.nextcloud.service :as nextcloud-service]))
 
