@@ -6,7 +6,7 @@
    [promesa.core :as p]
    [base :as base]
    [configs :refer [cfg]]
-   [k8s.services.nextcloud.nextcloud :as nextcloud]
+   [k8s.services.nextcloud.service :as nextcloud]
    [deployments :as deployments]))
 
 

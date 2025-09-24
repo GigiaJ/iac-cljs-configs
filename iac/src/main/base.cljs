@@ -5,16 +5,15 @@
    [promesa.core :as p]   
    [infra.init :as infra]
    [k8s.csi-driver.hetzner :as hetznercsi]
-   [k8s.services.openbao.openbao :as vault]
+   [k8s.services.openbao.service :as vault-service]
    ))
 
 
 (defn app-deployments
   "Deploy applications with proper dependency chain"
   [provider kubeconfig apps]
-  (let [vault-result (vault/deploy-vault provider kubeconfig)
-        vault-params {:address (get vault-result :address) :token (get vault-result :root-token)}
-        app-results (if (nil? apps) {} (apps provider vault-params))]
+  (let [vault-result (vault-service/deploy-vault provider kubeconfig)
+        app-results (if (nil? apps) {} (apps provider))]
     (assoc app-results :vault vault-result)))
 
 (defn initialize [apps]
@@ -25,7 +24,7 @@
                          (fn [resolve _reject]
                            (let [provider (new k8s/Provider
                                                "k8s-dynamic-provider"
-                                               (clj->js {:kubeconfig kc}))]
+                                               (clj->js {:kubeconfig kc}))] 
                              (hetznercsi/deploy-csi-driver provider)
                              (resolve
                               (if (nil? apps)
