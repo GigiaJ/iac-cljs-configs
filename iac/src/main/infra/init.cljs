@@ -3,10 +3,9 @@
             ["@pulumi/hcloud" :as hcloud]
             ["@pulumi/command/remote" :as remote]
             ["@pulumi/command/local" :as local]
-            ["@pulumi/kubernetes" :as k8s]
             ["fs" :as fs]))
 
-(defn- install-master-script [public-ip]
+(defn- setup-master-script []
   (str "# Create manifests dir\n"
        "mkdir -p /var/lib/rancher/k3s/server/manifests\n\n"
        "# Traefik NodePort config\n"
@@ -26,10 +25,12 @@
        "        nodePort: 30080\n"
        "      websecure:\n"
        "        nodePort: 30443\n"
-       "EOF\n\n"
-       "# Install k3s if not present\n"
+       "EOF\n\n"))
+
+(defn- install-master-script [public-ip]
+  (str "# Install k3s if not present\n"
        "if ! command -v k3s >/dev/null; then\n"
-       "  curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC=\"--flannel-backend=wireguard-native --node-external-ip=" public-ip "\" sh -\n"
+       "  curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC=\"--disable=traefik --flannel-backend=wireguard-native --node-external-ip=" public-ip "\" sh -\n"
        "fi\n\n"
        "# Wait for node readiness\n"
        "until sudo k3s kubectl get node >/dev/null 2>&1; do\n"
@@ -67,6 +68,8 @@
                     (clj->js {:rules [{:direction "in" :protocol "tcp" :port "22"    :sourceIps ["0.0.0.0/0" "::/0"]}
                                       {:direction "in" :protocol "tcp" :port "6443"  :sourceIps ["0.0.0.0/0" "::/0"]}
                                       {:direction "in" :protocol "udp" :port "51820" :sourceIps ["0.0.0.0/0" "::/0"]}
+                                      {:direction "in" :protocol "tcp" :port "80"    :sourceIps ["0.0.0.0/0" "::/0"]}
+                                      {:direction "in" :protocol "tcp" :port "443"    :sourceIps ["0.0.0.0/0" "::/0"]}
                                       {:direction "in" :protocol "icmp"             :sourceIps ["0.0.0.0/0" "::/0"]}]}))
 
         master     (hcloud/Server.
@@ -83,12 +86,19 @@
                               :user "root"
                               :privateKey priv-key})
 
+        setup-master
+        (remote/Command.
+         "setup-master"
+         (clj->js {:connection master-conn
+                   :create (.apply setup-master-script)})
+         (clj->js {:dependsOn [master]}))
+
         install-master
         (remote/Command.
          "install-master"
          (clj->js {:connection master-conn
                    :create (.apply master-ip install-master-script)})
-         (clj->js {:dependsOn [master]}))
+         (clj->js {:dependsOn [setup-master]})) 
 
         token-cmd
         (remote/Command.
@@ -97,12 +107,12 @@
                    :create "sudo cat /var/lib/rancher/k3s/server/node-token"})
          (clj->js {:dependsOn [install-master]}))
 
-       worker-script
-       (.apply master-ip
-               (fn [ip]
-                 (.apply (.-stdout token-cmd)
-                         (fn [token]
-                           (install-worker-script ip (.trim token))))))
+        worker-script
+        (.apply master-ip
+                (fn [ip]
+                  (.apply (.-stdout token-cmd)
+                          (fn [token]
+                            (install-worker-script ip (.trim token))))))
 
         worker-de  (hcloud/Server.
                     "k3s-worker-de"
@@ -132,32 +142,31 @@
          (clj->js {:dependsOn [install-master worker-de worker-us]}))
 
         label-node
-(local/Command.
- "label-german-node-alt"
- (clj->js
-  {:create (.apply (.-stdout kubeconfig-cmd)
-                   (fn [kubeconfig]
-                     (.apply (.-name worker-de)
-                             (fn [worker-name]
-                               (let [path "./kubeconfig.yaml"]
-                                 (.writeFileSync fs path kubeconfig)
-                                 (str
-                                  "for i in {1..30}; do "
-                                  "  if kubectl --kubeconfig=" path " get node " worker-name " > /dev/null 2>&1; then "
-                                  "    echo 'Node " worker-name " found, proceeding with label.' && "
-                                  "    kubectl --kubeconfig=" path " label node " worker-name " location=de --overwrite && "
-                                  "    exit 0; "
-                                  "  else "
-                                  "    echo 'Node " worker-name " not ready yet. Waiting 10s... (Attempt: '\"$i\"'/30)'; "
-                                  "    sleep 10; "
-                                  "  fi; "
-                                  "done; "
-                                  "echo 'Error: Timed out waiting for node " worker-name ".' >&2 && "
-                                  "exit 1;"))))))})
- (clj->js {:dependsOn [kubeconfig-cmd worker-de]}))
-        ]
+        (local/Command.
+         "label-german-node-alt"
+         (clj->js
+          {:create (.apply (.-stdout kubeconfig-cmd)
+                           (fn [kubeconfig]
+                             (.apply (.-name worker-de)
+                                     (fn [worker-name]
+                                       (let [path "./kubeconfig.yaml"]
+                                         (.writeFileSync fs path kubeconfig)
+                                         (str
+                                          "for i in {1..30}; do "
+                                          "  if kubectl --kubeconfig=" path " get node " worker-name " > /dev/null 2>&1; then "
+                                          "    echo 'Node " worker-name " found, proceeding with label.' && "
+                                          "    kubectl --kubeconfig=" path " label node " worker-name " location=de --overwrite && "
+                                          "    exit 0; "
+                                          "  else "
+                                          "    echo 'Node " worker-name " not ready yet. Waiting 10s... (Attempt: '\"$i\"'/30)'; "
+                                          "    sleep 10; "
+                                          "  fi; "
+                                          "done; "
+                                          "echo 'Error: Timed out waiting for node " worker-name ".' >&2 && "
+                                          "exit 1;"))))))})
+         (clj->js {:dependsOn [kubeconfig-cmd worker-de]}))]
 
     {:masterIp master-ip
-              :workerDeIp (.-ipv4Address worker-de)
-              :workerUsIp (.-ipv4Address worker-us)
-              :kubeconfig (pulumi/secret (.-stdout kubeconfig-cmd))}))
+     :workerDeIp (.-ipv4Address worker-de)
+     :workerUsIp (.-ipv4Address worker-us)
+     :kubeconfig (pulumi/secret (.-stdout kubeconfig-cmd))}))
