@@ -5,6 +5,7 @@
    [promesa.core :as p]   
    [infra.init :as infra]
    [k8s.csi-driver.hetzner :as hetznercsi]
+   [k8s.services.traefik.service :as traefik]
    [k8s.services.openbao.service :as vault-service]
    ))
 
@@ -25,6 +26,7 @@
                            (let [provider (new k8s/Provider
                                                "k8s-dynamic-provider"
                                                (clj->js {:kubeconfig kc}))] 
+                             (traefik/set-up-traefik provider)
                              (hetznercsi/deploy-csi-driver provider)
                              (resolve
                               (if (nil? apps)
