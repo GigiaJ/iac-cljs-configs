@@ -69,3 +69,15 @@ kubectl --kubeconfig=kubeconfig.yaml port-forward -n vault vault-0 8200:8200
 ```
 This enables us to access the openbao UI in our browser.
 You can add secrets from this interface or if you want you can connect to the pod directly and run OpenBao CLI commands.
+
+
+Deletion:
+kubectl --kubeconfig=kubeconfig.yaml patch deployment nextcloud -n my-nextcloud -p '{"metadata":{"finalizers":[]}}' --type='merge'
+
+kubectl --kubeconfig=kubeconfig.yaml patch statefulset nextcloud-redis-master -n my-nextcloud -p '{"metadata":{"finalizers":[]}}' --type='merge'
+
+kubectl --kubeconfig=kubeconfig.yaml patch statefulset nextcloud-mariadb -n my-nextcloud -p '{"metadata":{"finalizers":[]}}' --type='merge'
+
+kubectl --kubeconfig=kubeconfig.yaml patch statefulset nextcloud-redis-replicas -n my-nextcloud -p '{"metadata":{"finalizers":[]}}' --type='merge'
+
+kubectl --kubeconfig=kubeconfig.yaml patch pvc nextcloud-nextcloud -n my-nextcloud -p '{"metadata":{"finalizers":[]}}' --type='merge'
