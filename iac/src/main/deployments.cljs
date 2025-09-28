@@ -3,17 +3,21 @@
    ["@pulumi/pulumi" :as pulumi]
    ["@pulumi/vault" :as vault]
    [base :as base]
+   [infra.dns :as dns]
    [k8s.services.nextcloud.service :as nextcloud-service]))
 
 
-(defn app-list [provider]
+(defn app-list [config provider kc]
   (let [stack-ref (new pulumi/StackReference "cluster")
         vault-provider (new vault/Provider
                             "vault-provider"
                             (clj->js {:address (.getOutput stack-ref "vaultAddress")
-                                      :token   (.getOutput stack-ref "vaultToken")}))
-        nextcloud-result (nextcloud-service/deploy-nextcloud provider vault-provider)]
-    {:nextcloud nextcloud-result}))
+                                      :token   (.getOutput stack-ref "vaultToken")})) 
+        cloudflare-result (dns/setup-dns config vault-provider)
+        nextcloud-result (nextcloud-service/deploy-nextcloud provider vault-provider)
+        ]
+    {:nextcloud nextcloud-result
+     :cloudflare cloudflare-result}))
 
 (defn extended-exports [init] 
   (let [exports (base.build-exports init)
