@@ -57,9 +57,8 @@
        "fi\n\n"
        "echo '--- Finished worker install ---'\n"))
 
-(defn create-cluster []
-  (let [cfg        (pulumi/Config.)
-        ssh-key    (.require cfg "sshKeyName")
+(defn create-cluster [cfg]
+  (let [ssh-key    (.require cfg "sshKeyName")
         personal-key (.require cfg "sshPersonalKeyName")
         priv-key   (.requireSecret cfg "privateKeySsh")
 
