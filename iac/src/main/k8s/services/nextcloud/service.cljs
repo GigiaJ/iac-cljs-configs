@@ -5,7 +5,8 @@
    ["@pulumi/vault" :as vault]
    ["fs" :as fs]
    ["js-yaml" :as yaml]
-   ["path" :as path]))
+   ["path" :as path]
+   [utils.vault :refer [get-secret-val]]))
 
 (defn- add-skip-await-transformation
   "A Pulumi transformation that adds the skipAwait annotation to problematic resources."
@@ -21,11 +22,6 @@
             new-metadata (assoc metadata :annotations new-annotations)]
         (assoc args :metadata new-metadata))
       args)))
-
-(defn- get-secret-val
-  "Extract a specific key from a Vault secret Output/Promise."
-  [secret-promise key]
-  (.then secret-promise #(aget (.-data %) key)))
 
 (defn deploy-nextcloud
   "Deploy Nextcloud using direct vault connection info."
