@@ -5,3 +5,5 @@
 /core/.shadow-cljs/
 /app-services/.shadow-cljs/
 /out/
+/core/.clj-kondo/
+.env
