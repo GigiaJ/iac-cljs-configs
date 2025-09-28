@@ -250,11 +250,18 @@
        "        \"host\": \"nextcloud.example.com\"\n"
        "      }\n"
        "    }'\n\n"
+       "curl -s -H \"X-Vault-Token: $ROOT_TOKEN\" \\\n"
+       "    -X POST \"$BAO_ADDR/v1/secret/data/dns\" \\\n"
+       "    -d '{\n"
+       "      \"data\": {\n"
+       "        \"host-name\": \"CLOUDFLARE-ID\"\n"
+       "      }\n"
+       "    }'\n\n"
        "echo 'OpenBao secrets setup complete!'\n"))
 
 (defn deploy-vault
   "Deploy OpenBao via Helm chart with fully automated initialization."
-  [provider kubeconfig]
+  [provider]
   (let [core-v1 (.. k8s -core -v1)
         helm-v3 (.. k8s -helm -v3)
 
