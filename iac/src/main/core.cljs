@@ -54,6 +54,7 @@
           _ (.setConfig app-stack "kubeconfig" #js {:value kubeconfig :secret true})
           _ (.setConfig app-stack "vault:token" #js {:value vault-token :secret true})
           _ (.setConfig app-stack "vault:address" #js {:value vault-address :secret true})
+          _ (.setConfig app-stack "hetzner-k3s:apiToken" #js {:value (-> cfg :apiToken) :secret true})
 
           app-result (.up app-stack #js {:onOutput println})
 
