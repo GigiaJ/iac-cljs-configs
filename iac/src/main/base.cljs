@@ -12,13 +12,14 @@
 
 (defn app-deployments
   "Deploy applications with proper dependency chain"
-  [provider kubeconfig apps]
-  (let [vault-result (vault-service/deploy-vault provider kubeconfig)
-        app-results (if (nil? apps) {} (apps provider))]
+  [provider config kc apps]
+  (let [vault-result (vault-service/deploy-vault provider)
+        app-results (if (nil? apps) {} (apps config provider))]
     (assoc app-results :vault vault-result)))
 
 (defn initialize [apps]
-  (let [cluster (infra/create-cluster)
+  (let [cfg  (pulumi/Config.)
+        cluster (infra/create-cluster cfg)
         setup (.apply (get cluster :kubeconfig)
                       (fn [kc]
                         (js/Promise.
@@ -30,8 +31,8 @@
                              (hetznercsi/deploy-csi-driver provider)
                              (resolve
                               (if (nil? apps)
-                                (app-deployments provider kc nil)
-                                (app-deployments provider kc apps))))))))]
+                                (app-deployments provider cfg kc nil)
+                                (app-deployments provider cfg kc apps))))))))]
     {:cluster cluster :setup setup}))
 
 (defn build-exports [init]
