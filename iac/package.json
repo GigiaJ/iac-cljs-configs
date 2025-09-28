@@ -18,6 +18,16 @@
     "destroy": "pulumi destroy -C ./app-services",
     "deploy": "npm run build && npm run auto"
   },
+  "dependencies": {
+            "@pulumi/pulumi": "^3.113.0",
+        "@pulumi/hcloud": "^1.24.0",
+        "@pulumi/esc-sdk": "0.12.1",
+        "@pulumi/command": "^1.1.0",
+        "@pulumi/kubernetes": "^4.23.0",
+        "@pulumi/vault": "^7.2.1",
+        "@pulumi/cloudflare": "6.9.1",
+        "uuid": "13.0.0"
+  },
       "devDependencies": {
         "@types/node": "^18",
         "shadow-cljs": "^2.20.0",
