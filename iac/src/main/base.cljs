@@ -2,10 +2,10 @@
   (:require
    ["@pulumi/pulumi" :as pulumi] 
    ["@pulumi/kubernetes" :as k8s] 
-   [promesa.core :as p]   
    [infra.init :as infra]
-   [k8s.csi-driver.hetzner :as hetznercsi]
-   [k8s.services.traefik.service :as traefik]
+   [k8s.add-ons.csi-driver.hetzner :as hetznercsi]
+   [k8s.add-ons.cert-manager :as cert-manager]
+   [k8s.services.traefik.service :as traefik] 
    [k8s.services.openbao.service :as vault-service]
    ))
 
@@ -28,7 +28,8 @@
                                                "k8s-dynamic-provider"
                                                (clj->js {:kubeconfig kc}))] 
                              (traefik/set-up-traefik provider)
-                             (hetznercsi/deploy-csi-driver provider)
+                             (cert-manager/deploy provider)
+                             (hetznercsi/deploy-csi-driver provider) 
                              (resolve
                               (if (nil? apps)
                                 (app-deployments provider cfg kc nil)
