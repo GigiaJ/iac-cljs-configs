@@ -1,6 +1,7 @@
 (ns infra.dns
   (:require
    [clojure.string :as str]
+   [utils.vault :as utils]
    ["@pulumi/pulumi" :as pulumi]
    ["@pulumi/kubernetes" :as k8s]
    ["@pulumi/vault" :as vault]
@@ -26,8 +27,11 @@
         token (.requireSecret cfg "apiToken")
         cloudflare-provider (new cloudflare/Provider "cloudflare-provider"
                                  (clj->js {:apiToken token}))
+        service-name "dns"
+        vault-path (str "secret/" service-name)
+        _ (utils/initialize-mount vault-provider vault-path service-name)
         dns-configs-secret (.getSecret (.-generic vault)
-                                       (clj->js {:path "secret/dns"})
+                                       (clj->js {:path vault-path})
                                        (clj->js {:provider  vault-provider}))
         
       
@@ -50,7 +54,7 @@
                           (new cloudflare/DnsRecord
                                (str "dns-" (name hostname) "-node-" index)
                                (clj->js {:zoneId zone-id
-                                         :name (str hostname)
+                                         :name hostname
                                          :content ip
                                          :type (get-record-type ip)
                                          :ttl 300})
