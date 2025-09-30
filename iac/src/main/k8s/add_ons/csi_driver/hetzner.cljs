@@ -1,4 +1,4 @@
-(ns k8s.csi-driver.hetzner
+(ns k8s.add-ons.csi-driver.hetzner
   (:require ["@pulumi/pulumi" :as pulumi]
             ["@pulumi/kubernetes" :as k8s]))
 
