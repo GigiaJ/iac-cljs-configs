@@ -1,12 +1,3 @@
-ingress:
-  enabled: true
-  className: "traefik"
-  hosts:
-    - host: nextcloud.your-domain.com # This will be overwritten by Pulumi
-      paths:
-        - path: /
-          pathType: ImplementationSpecific
-
 nextcloud:
   username: "admin"
   nodeSelector:
