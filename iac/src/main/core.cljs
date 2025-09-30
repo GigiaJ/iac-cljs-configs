@@ -27,10 +27,19 @@
           _ (.setConfig core-stack "hetzner-k3s:sshKeyName" #js {:value (-> cfg :sshKeyName) :secret false})
           _ (.setConfig core-stack "hetzner-k3s:sshPersonalKeyName" #js {:value (-> cfg :sshPersonalKeyName) :secret false})
           _ (.setConfig core-stack "hcloud:token" #js {:value (-> cfg :hcloudToken) :secret true})
-          _ (.setConfig core-stack "hetzner-k3s:privateKeySsh" #js {:value (-> cfg :privateKeySsh) :secret true}) 
-          core-result (.up core-stack #js {:onOutput println}) 
+          _ (.setConfig core-stack "hetzner-k3s:privateKeySsh" #js {:value (-> cfg :privateKeySsh) :secret true})
+          ;;core-result (.up core-stack #js {:onOutput println}) 
 
+          ;; Checks for changes on the core and prevents deleting the app-stack needlessly.
+          ;; Important for the Openbao vault as it is deployed here and configured on the app-stack generally
+          core-preview-result (.preview core-stack #js {:onOutput println})
+          core-change-summary (js->clj (.-changeSummary core-preview-result) :keywordize-keys true)
+          core-result              (when (or (zero? (:delete core-change-summary 0))
+                                              (pos? (:update core-change-summary 0))
+                                              (pos? (:create core-change-summary 0)))
+                                      (.up core-stack #js {:onOutput println}))
           core-outputs (.outputs core-stack)
+
           vault-address (-> core-outputs (aget "vaultAddress") (.-value))
           vault-token   (-> core-outputs (aget "vaultToken") (.-value))
           kubeconfig    (-> core-outputs (aget "kubeconfig") (.-value))
@@ -42,7 +51,7 @@
                                       "svc/openbao"
                                       "8200:8200"
                                       "-n"
-                                      "vault"]) 
+                                      "vault"])
 
           _ (p/delay 2000)
           app-stack  (.createOrSelectStack pulumi-auto/LocalWorkspace
