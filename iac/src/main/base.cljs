@@ -4,8 +4,7 @@
    ["@pulumi/kubernetes" :as k8s] 
    [infra.init :as infra]
    [k8s.add-ons.csi-driver.hetzner :as hetznercsi]
-   [k8s.add-ons.cert-manager :as cert-manager]
-   [k8s.services.traefik.service :as traefik] 
+   [k8s.services.caddy.service :as caddy]
    [k8s.services.openbao.service :as vault-service]
    ))
 
@@ -27,8 +26,7 @@
                            (let [provider (new k8s/Provider
                                                "k8s-dynamic-provider"
                                                (clj->js {:kubeconfig kc}))] 
-                             (traefik/set-up-traefik provider)
-                             (cert-manager/deploy provider)
+                             (caddy/deploy provider)
                              (hetznercsi/deploy-csi-driver provider) 
                              (resolve
                               (if (nil? apps)
