@@ -16,8 +16,10 @@
    :resource-path (get-env "RESOURCE_PATH" "resources")  
 
    :secrets-json (-> (js/require "path")
-                       (.join js/__dirname ".." "dummy-secrets.json")
+                       (.join js/__dirname ".." "init-secrets.json")
                        (js/require)
                        (js->clj :keywordize-keys true))
+   :docker-repo (get-env "DOCKER_REPO" "")
+   :dns-email (get-env "DNS_EMAIL" "")
    }
   )
