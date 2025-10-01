@@ -26,6 +26,7 @@
         "@pulumi/kubernetes": "^4.23.0",
         "@pulumi/vault": "^7.2.1",
         "@pulumi/cloudflare": "6.9.1",
+        "@pulumi/docker": "4.9.0",
         "uuid": "13.0.0"
   },
       "devDependencies": {
