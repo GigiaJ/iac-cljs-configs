@@ -22,14 +22,12 @@
 (defn deploy-nextcloud
   "Deploy Nextcloud using direct vault connection info."
   [provider vault-provider]
-  (let [{:keys [helm-v3 secrets yaml-values service-name namespace bind-secrets]} (vault-utils/prepare vault-provider "nextcloud" provider)
-
+  (let [{:keys [helm-v3 secrets yaml-values service-name namespace bind-secrets]} (vault-utils/prepare vault-provider "nextcloud" provider true)
         hostname (.. secrets -host)
-
         final-helm-values (-> yaml-values
                               (assoc-in [:ingress :enabled] false)
                               (assoc-in [:nextcloud :host] hostname)
-                              (assoc-in [:nextcloud :trusted_domains] [hostname]))
+                              (assoc-in [:nextcloud :trusted_domains] [hostname "nextcloud"]))
         chart (new (.. helm-v3 -Chart)
                    service-name
                    (clj->js {:chart     service-name
@@ -40,8 +38,7 @@
                              :dependsOn [bind-secrets]
                              :transformations [add-skip-await-transformation]
                              }))
-        ingress (ingress-utils/create-ingress hostname namespace service-name 80 chart)
-        ;;cert (ingress-utils/create-certificate hostname namespace service-name ingress)
+        ingress (ingress-utils/create-ingress hostname namespace service-name 8080 chart)
         ]
     {:namespace    namespace
      :nextcloud-secrets bind-secrets
