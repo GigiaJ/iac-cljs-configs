@@ -7,10 +7,18 @@ I'll try to include any pertinent documentation here in the tooling I use or the
 #### Upcoming
 Initially we'll try to migrate our services from a docker compose and into a reproducible and controlled deployment scheme here. I'll also likely break this into its own repo and instead reference it as a submodule in our dotfiles (because it makes far more sense that way).
 
+I also would like to swap the Docker repo used to be a generated [Harbor](https://goharbor.io/) one (due to the time constraints this would add I'll cope).
+For now with an .env file set up with your PAT token for [Dockerhub](https://hub.docker.com) and the repo set to `gigiaj/`
+```
+echo "$DOCKERHUB_PAT" | docker login --username gigiaj --password-stdin
+```
+
 
 
 #### Goals
 The long term goal is for this to be a mostly uninteractive, to completion set up of my cloud services. Since it'll be IaC should I ever choose down the road to migrate certain ones to local nodes I run then that effort should also be more or less feasible.
+
+
 
 
 ### Initial requirements
