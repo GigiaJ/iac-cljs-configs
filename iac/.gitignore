@@ -7,3 +7,4 @@
 /out/
 /core/.clj-kondo/
 .env
+init-secrets.json
