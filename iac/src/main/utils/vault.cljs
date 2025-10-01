@@ -37,8 +37,8 @@
                             (clj->js {:path vault-path})
                             (clj->js {:provider  vault-provider}))))
         secrets-data (when secrets (.apply secrets #(.. % -data)))
-        values-path (when load-yaml (.join path js/__dirname ".."  (-> cfg :resource-path) (str service-name ".yml")))
-        yaml-values (when values-path (js->clj (-> values-path
+        values-path (.join path js/__dirname ".."  (-> cfg :resource-path) (str service-name ".yml"))
+        yaml-values (when load-yaml (js->clj (-> values-path
                                  (fs/readFileSync "utf8")
                                  (yaml/load))))
         ns (when provider (.. (new (.. core-v1 -Namespace)
