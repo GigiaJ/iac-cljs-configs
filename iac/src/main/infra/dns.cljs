@@ -29,10 +29,11 @@
                                  (clj->js {:apiToken token}))
         service-name "dns"
         vault-path (str "secret/" service-name)
-        _ (utils/initialize-mount vault-provider vault-path service-name)
+        initialize (utils/initialize-mount vault-provider vault-path service-name)
         dns-configs-secret (.getSecret (.-generic vault)
                                        (clj->js {:path vault-path})
-                                       (clj->js {:provider  vault-provider}))
+                                       (clj->js {:provider  vault-provider
+                                                 :dependsOn initialize}))
         
       
          node-ips-output (.-stdout get-node-ips)]
