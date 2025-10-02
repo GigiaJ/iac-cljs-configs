@@ -1,12 +1,11 @@
 (ns base
   (:require
-   ["@pulumi/pulumi" :as pulumi] 
-   ["@pulumi/kubernetes" :as k8s] 
+   ["@pulumi/pulumi" :as pulumi]
+   ["@pulumi/kubernetes" :as k8s]
    [infra.init :as infra]
-   [k8s.add-ons.csi-driver.hetzner :as hetznercsi]
-   [k8s.services.caddy.service :as caddy]
-   [k8s.services.openbao.service :as vault-service]
-   ))
+   [k8s.add-ons.csi-driver.hetzner :as hetzner-csi]
+   [k8s.add-ons.ingress-controller.caddy :as caddy]
+   [k8s.services.openbao.service :as vault-service]))
 
 
 (defn app-deployments
@@ -25,9 +24,9 @@
                          (fn [resolve _reject]
                            (let [provider (new k8s/Provider
                                                "k8s-dynamic-provider"
-                                               (clj->js {:kubeconfig kc}))] 
+                                               (clj->js {:kubeconfig kc}))]
                              (caddy/deploy provider)
-                             (hetznercsi/deploy-csi-driver provider) 
+                             (hetzner-csi/deploy provider)
                              (resolve
                               (if (nil? apps)
                                 (app-deployments provider cfg kc nil)
