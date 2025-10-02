@@ -2,7 +2,7 @@
   (:require
    ["@pulumi/pulumi" :as pulumi]
    [utils.vault :as vault-utils]
-   [utils.ingress :as ingress-utils]))
+   [utils.k8s :as k8s-utils]))
 
 (defn- add-skip-await-transformation
   "A Pulumi transformation that adds the skipAwait annotation to problematic resources."
@@ -22,26 +22,20 @@
 (defn deploy-nextcloud
   "Deploy Nextcloud using direct vault connection info."
   [provider vault-provider]
-  (let [{:keys [helm-v3 secrets yaml-values service-name namespace bind-secrets]} (vault-utils/prepare vault-provider "nextcloud" provider true)
-        hostname (.. secrets -host)
-        final-helm-values (-> yaml-values
-                              (assoc-in [:ingress :enabled] false)
-                              (assoc-in [:nextcloud :host] hostname)
-                              (assoc-in [:nextcloud :trusted_domains] [hostname "nextcloud"]))
-        chart (new (.. helm-v3 -Chart)
-                   service-name
-                   (clj->js {:chart     service-name
-                             :fetchOpts {:repo "https://nextcloud.github.io/helm/"}
-                             :namespace namespace
-                             :values    final-helm-values})
-                   (clj->js {:provider provider
-                             :dependsOn [bind-secrets]
-                             :transformations [add-skip-await-transformation]
-                             }))
-        ingress (ingress-utils/create-ingress hostname namespace service-name 8080 chart)
-        ]
-    {:namespace    namespace
-     :nextcloud-secrets bind-secrets
-     :chart        chart
-     :ingress ingress
-     :nextcloud-url (str "https://" hostname)}))
+  (let [nextcloud-values-transformer (fn [{:keys [base-values hostname app-name]}]
+                                       (-> base-values
+                                           (assoc-in [:ingress :enabled] false)
+                                           (assoc-in [:nextcloud :host] hostname)
+                                           (assoc-in [:nextcloud :trusted_domains] [hostname app-name])))
+        stack (k8s-utils/deploy-stack
+               :namespace :vault-secrets :hostname :chart :ingress
+               {:provider provider
+                :vault-provider vault-provider
+                :app-namespace "nextcloud"
+                :app-name "nextcloud"
+                :image-port 8080
+                :vault-load-yaml true
+                :chart-repo "https://nextcloud.github.io/helm/"
+                :helm-values-fn nextcloud-values-transformer
+                :transformations add-skip-await-transformation})]
+    {:stack stack}))
