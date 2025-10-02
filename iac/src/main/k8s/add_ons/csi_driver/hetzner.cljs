@@ -2,7 +2,7 @@
   (:require ["@pulumi/pulumi" :as pulumi]
             ["@pulumi/kubernetes" :as k8s]))
 
-(defn deploy-csi-driver [provider]
+(defn deploy [provider]
   (let [hcloud-config (pulumi/Config. "hcloud")
         hcloud-token  (.requireSecret hcloud-config "token")
         core-v1       (.. k8s -core -v1)
