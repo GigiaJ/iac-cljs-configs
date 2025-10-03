@@ -164,8 +164,4 @@
                                           "echo 'Error: Timed out waiting for node " worker-name ".' >&2 && "
                                           "exit 1;"))))))})
          (clj->js {:dependsOn [kubeconfig-cmd worker-de]}))]
-
-    {:masterIp master-ip
-     :workerDeIp (.-ipv4Address worker-de)
-     :workerUsIp (.-ipv4Address worker-us)
-     :kubeconfig (pulumi/secret (.-stdout kubeconfig-cmd))}))
+    (pulumi/secret (.-stdout kubeconfig-cmd))))
