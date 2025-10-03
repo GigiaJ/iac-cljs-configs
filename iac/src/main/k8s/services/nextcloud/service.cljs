@@ -4,22 +4,15 @@
    [utils.vault :as vault-utils]
    [utils.k8s :as k8s-utils]))
 
-(defn- add-skip-await-transformation
-  "A Pulumi transformation that adds the skipAwait annotation to problematic resources."
-  [args _opts]
-  (let [kind (get-in args [:kind])]
-    (if (or
-         (= kind "StatefulSet")
-         (= kind "PersistentVolumeClaim")
-         (= kind "Ingress"))
-      (let [metadata (get-in args [:metadata] {})
-            annotations (get metadata :annotations {})
-            new-annotations (assoc annotations "pulumi.com/skipAwait" "true")
-            new-metadata (assoc metadata :annotations new-annotations)]
-        (assoc args :metadata new-metadata))
+(defn- add-skip-await-transformation [args _opts]
+  (let [kind (get-in args [:resource :kind])]
+    (if (some #{kind} ["StatefulSet" "PersistentVolumeClaim" "Ingress"])
+      (update-in args [:resource :metadata :annotations]
+                 #(assoc (or % {}) "pulumi.com/skipAwait" "true"))
       args)))
 
-(defn deploy-nextcloud
+
+(defn deploy
   "Deploy Nextcloud using direct vault connection info."
   [provider vault-provider]
   (let [nextcloud-values-transformer (fn [{:keys [base-values hostname app-name]}]
