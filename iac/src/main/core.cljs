@@ -11,12 +11,12 @@
 
 
 (def init-stack (clj->js  {:projectName "hetzner-k3s"
-                       :stackName "cluster"
+                       :stackName "init"
                        :workDir "/home/jaggar/dotfiles/iac"
                        :program base/quick-deploy}))
 
 (def deployment-stack (clj->js  {:projectName "hetzner-k3s"
-                           :stackName "cluster"
+                           :stackName "deployment"
                            :workDir "/home/jaggar/dotfiles/iac"
                            :program deployments/quick-deploy}))
 
@@ -45,15 +45,18 @@
           kubeconfig    (-> core-outputs (aget "kubeconfig") (.-value))
 
           _ (println core-outputs)
+
+          
+          _ (p/delay 2000)
           port-forward (cp/spawn "kubectl"
-                                 #js ["--kubeconfig=kubeconfig.yaml"
-                                      "port-forward"
+                                 #js ["port-forward"
                                       "svc/openbao"
                                       "8200:8200"
                                       "-n"
                                       "vault"])
 
           _ (p/delay 2000)
+
           app-stack  (.createOrSelectStack pulumi-auto/LocalWorkspace
                                            deployment-stack)
           _ (.setConfig app-stack "hetzner-k3s:sshKeyName" #js {:value (-> cfg :sshKeyName) :secret false})
@@ -70,8 +73,6 @@
           app-outputs (.outputs app-stack)
           _ (println app-outputs)
           _ (.kill port-forward)]
-
-    ;; This final value is returned when the p/let chain completes
     "All stacks deployed and cleaned up successfully."))
 
 
