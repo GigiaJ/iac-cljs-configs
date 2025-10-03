@@ -80,12 +80,38 @@ You can add secrets from this interface or if you want you can connect to the po
 
 
 Deletion:
-kubectl --kubeconfig=kubeconfig.yaml patch deployment nextcloud -n my-nextcloud -p '{"metadata":{"finalizers":[]}}' --type='merge'
+kubectl --kubeconfig=kubeconfig.yaml patch deployment nextcloud -n nextcloud -p '{"metadata":{"finalizers":[]}}' --type='merge'
 
-kubectl --kubeconfig=kubeconfig.yaml patch statefulset nextcloud-redis-master -n my-nextcloud -p '{"metadata":{"finalizers":[]}}' --type='merge'
+### Adding Services
+Depending on the implementation there are a few steps needed, but usually much will be shared between helm charts and service/deployment declarations:
+An excellent example of a new service in `src/main/k8s/services/mesite/service.cljs`
+```
+(ns k8s.services.mesite.service
+  (:require
+   [utils.k8s :as k8s-utils]
+   [configs :refer [cfg]]))
 
-kubectl --kubeconfig=kubeconfig.yaml patch statefulset nextcloud-mariadb -n my-nextcloud -p '{"metadata":{"finalizers":[]}}' --type='merge'
-
-kubectl --kubeconfig=kubeconfig.yaml patch statefulset nextcloud-redis-replicas -n my-nextcloud -p '{"metadata":{"finalizers":[]}}' --type='merge'
-
-kubectl --kubeconfig=kubeconfig.yaml patch pvc nextcloud-nextcloud -n my-nextcloud -p '{"metadata":{"finalizers":[]}}' --type='merge'
+(defn deploy [provider vault-provider]
+  (k8s-utils/deploy-stack
+   :namespace :vault-secrets :deployment :service :ingress
+   {:provider provider
+    :vault-provider vault-provider
+    :app-namespace "generic"
+    :app-name "mesite"
+    :image-port 80
+    :image (str (-> cfg :docker-repo) "/mesite:latest")}))
+```
+Then inside deployments.cljs you simply need to add to the app-list function:
+```
+(defn app-list [config provider kc]
+  (let [stack-ref (new pulumi/StackReference "cluster")
+        vault-provider (new vault/Provider
+                            "vault-provider"
+                            (clj->js {:address (.getOutput stack-ref "vaultAddress")
+                                      :token   (.getOutput stack-ref "vaultToken")})) 
+        cloudflare-result (dns/setup-dns config vault-provider)
+        mesite-result (mesite-service/deploy provider vault-provider)
+        ]
+    {
+     :cloudflare cloudflare-result}))
+```
