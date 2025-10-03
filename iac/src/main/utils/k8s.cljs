@@ -14,7 +14,7 @@
         requested-components (set component-kws)
 
         {:keys [provider vault-provider hostname app-namespace app-name image image-port caddy-snippet vault-load-yaml chart-repo transformations helm-values-fn]
-         :or {image-port 80  caddy-snippet "" helm-values-fn #(:base-values %)}} options
+         :or {vault-load-yaml false image-port 80 caddy-snippet "" helm-values-fn #(:base-values %)}} options
         app-labels {:app app-name}
 
 
@@ -41,11 +41,9 @@
           (some? secrets) (.apply secrets (fn [s] (aget s "host")))
           :else nil)
 
-        final-helm-values (pulumi/all [secrets bind-secrets yaml-values app-name]
-                                      (fn [[yaml-map app-name-str]]
-                                          (helm-values-fn {:base-values (or yaml-map {})
-                                                           :hostname    final-hostname
-                                                           :app-name    app-name-str})))
+        final-helm-values (helm-values-fn {:base-values  yaml-values
+                                           :hostname    final-hostname
+                                           :app-name    app-name})
 
 
         chart (when (requested-components :chart)
@@ -60,7 +58,8 @@
 
         deployment (when (requested-components :deployment)
                      (new (.. k8s -apps -v1 -Deployment) app-name
-                          (clj->js {:metadata {:namespace app-namespace}
+                          (clj->js {:metadata {:namespace app-namespace
+                                               :name app-name}
                                     :spec {:selector {:matchLabels app-labels}
                                            :replicas 1
                                            :template {:metadata {:labels app-labels}
@@ -72,7 +71,8 @@
 
         service (when (requested-components :service)
                   (new (.. k8s -core -v1 -Service) app-name
-                       (clj->js {:metadata {:namespace app-namespace}
+                       (clj->js {:metadata {:namespace app-namespace
+                                            :name app-name}
                                  :spec {:selector app-labels
                                         :ports [{:port 80 :targetPort image-port}]}})
                        (clj->js {:provider provider :dependsOn [deployment]})))
