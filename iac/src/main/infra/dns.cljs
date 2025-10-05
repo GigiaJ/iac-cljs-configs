@@ -11,7 +11,6 @@
 (defn get-record-type
   "Determines the DNS record type (A or AAAA) based on IP address format."
   [ip-address]
-  (println ip-address)
   (if (.includes ip-address ":")
     "AAAA"
     "A"))
