@@ -1,36 +1,21 @@
 (ns deployments
   (:require
-   ["@pulumi/pulumi" :as pulumi]
-   ["@pulumi/vault" :as vault]
    [base :as base]
    [infra.dns :as dns]
+   [k8s.add-ons.ingress-controller.caddy :as caddy]
    [k8s.services.nextcloud.service :as nextcloud-service]
    [k8s.services.mesite.service :as mesite-service]
-  ;; [k8s.services.productive.service :as productive-service]
-   ))
-
-
-(defn app-list [stack-ref config provider]
-  (let [vault-provider (new vault/Provider
-                            "vault-provider"
-                            (clj->js {:address (.getOutput stack-ref "vaultAddress")
-                                      :token   (.getOutput stack-ref "vaultToken")}))
-        cloudflare-result (dns/setup-dns config vault-provider)
-        ;; Manually make the namespaces and pass them
-        ;; You could return a map with the namespace and the resource function
-        ;; Then we can make the namespaces here and still dynamically build the resources
-        ;; It is the cleanest and most straight forward implementation.
-  ]
-        {
-     :cloudflare cloudflare-result}))
+   [k8s.services.productive.service :as productive-service]))
 
 (defn extended-exports [init] 
-  (let [exports (base.build-exports init)
+  (let [;;exports (base.build-exports init)
         app-outputs (get init :setup)]
-    (assoc exports :nextcloudUrl (.apply app-outputs #(get-in % [:nextcloud :nextcloud-url])))))
+    #_(assoc exports :nextcloudUrl (.apply app-outputs #(get-in % [:nextcloud :nextcloud-url
+                                                                   ])))
+        ))
 
-(defn quick-deploy []
-  (->
-   (base/initialize app-list) 
-   (extended-exports)
-   (clj->js)))
+(defn quick-deploy-services []
+  (base/quick-deploy [nextcloud-service/config mesite-service/config productive-service/config] extended-exports))
+
+(defn quick-deploy-shared []
+  (base/quick-deploy [caddy/config dns/config] extended-exports))
