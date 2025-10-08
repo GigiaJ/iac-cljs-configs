@@ -6,19 +6,23 @@
    [promesa.core :as p]
    [base :as base]
    [configs :refer [cfg]]
-   [k8s.services.nextcloud.service :as nextcloud]
    [deployments :as deployments]))
 
 
 (def init-stack (clj->js  {:projectName "hetzner-k3s"
                        :stackName "init"
                        :workDir "/home/jaggar/dotfiles/iac"
-                       :program base/quick-deploy}))
+                       :program base/quick-deploy-base}))
+
+(def shared-platform-stack (clj->js  {:projectName "hetzner-k3s"
+                                      :stackName "shared"
+                                      :workDir "/home/jaggar/dotfiles/iac"
+                                      :program deployments/quick-deploy-shared}))
 
 (def deployment-stack (clj->js  {:projectName "hetzner-k3s"
                            :stackName "deployment"
                            :workDir "/home/jaggar/dotfiles/iac"
-                           :program deployments/quick-deploy}))
+                           :program deployments/quick-deploy-services}))
 
 (defn run []
   (p/let [_ (println "Deploying cluster")
@@ -35,9 +39,9 @@
           core-preview-result (.preview core-stack #js {:onOutput println})
           core-change-summary (js->clj (.-changeSummary core-preview-result) :keywordize-keys true)
           core-result              (when (or (zero? (:delete core-change-summary 0))
-                                              (pos? (:update core-change-summary 0))
-                                              (pos? (:create core-change-summary 0)))
-                                      (.up core-stack #js {:onOutput println}))
+                                             (pos? (:update core-change-summary 0))
+                                             (pos? (:create core-change-summary 0)))
+                                     (.up core-stack #js {:onOutput println}))
           core-outputs (.outputs core-stack)
 
           vault-address (-> core-outputs (aget "vaultAddress") (.-value))
@@ -46,7 +50,7 @@
 
           _ (println core-outputs)
 
-          
+
           _ (p/delay 2000)
           port-forward (cp/spawn "kubectl"
                                  #js ["port-forward"
@@ -56,12 +60,26 @@
                                       "vault"])
 
           _ (p/delay 2000)
+          shared-stack (.createOrSelectStack pulumi-auto/LocalWorkspace
+                                             shared-platform-stack)
+          _ (.setConfig shared-stack "hetzner-k3s:sshKeyName" #js {:value (-> cfg :sshKeyName) :secret false})
+          _ (.setConfig shared-stack "hetzner-k3s:sshPersonalKeyName" #js {:value (-> cfg :sshPersonalKeyName) :secret false})
+          _ (.setConfig shared-stack "hcloud:token" #js {:value (-> cfg :hcloudToken) :secret true})
+          _ (.setConfig shared-stack "kubeconfig" #js {:value kubeconfig :secret true})
+          _ (.setConfig shared-stack "vault:token" #js {:value vault-token :secret true})
+          _ (.setConfig shared-stack "vault:address" #js {:value vault-address :secret true})
+          _ (.setConfig shared-stack "hetzner-k3s:apiToken" #js {:value (-> cfg :apiToken) :secret true})
+
+          shared-results (.up shared-stack #js {:onOutput println})
+          shared-outputs (.outputs shared-stack)
+          _ (println shared-outputs)
+
+          _ (p/delay 3000)
 
           app-stack  (.createOrSelectStack pulumi-auto/LocalWorkspace
                                            deployment-stack)
           _ (.setConfig app-stack "hetzner-k3s:sshKeyName" #js {:value (-> cfg :sshKeyName) :secret false})
           _ (.setConfig app-stack "hetzner-k3s:sshPersonalKeyName" #js {:value (-> cfg :sshPersonalKeyName) :secret false})
-          _ (.setConfig app-stack "hcloud:token" #js {:value (-> cfg :hcloudToken) :secret true})
           _ (.setConfig app-stack "hetzner-k3s:privateKeySsh" #js {:value (-> cfg :privateKeySsh) :secret true})
           _ (.setConfig app-stack "kubeconfig" #js {:value kubeconfig :secret true})
           _ (.setConfig app-stack "vault:token" #js {:value vault-token :secret true})
