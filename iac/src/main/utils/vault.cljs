@@ -26,10 +26,6 @@
   "Prepares common resources and values for a deployment from a single config map."
   [config]
   (let [{:keys [provider vault-provider app-name app-namespace load-yaml]} config
-
-        apps-v1 (.. k8s -apps -v1)
-        core-v1 (.. k8s -core -v1)
-        helm-v3 (.. k8s -helm -v3)
         values-path (.join path js/__dirname ".." (-> cfg :resource-path) (str app-name ".yml"))]
 
     (let [yaml-values (when load-yaml
@@ -45,7 +41,7 @@
                                                      (clj->js {:provider vault-provider})))
                   secrets-data (.apply secrets #(.. % -data))
                   bind-secrets (when (and provider app-namespace)
-                                 (new (.. core-v1 -Secret) (str app-name "-secrets")
+                                 (new (.. k8s -core -v1  -Secret) (str app-name "-secrets")
                                       (clj->js {:metadata {:name (str app-name "-secrets")
                                                            :namespace app-namespace}
                                                 :stringData secrets-data})
@@ -53,10 +49,7 @@
               {:secrets-data secrets-data
                :bind-secrets bind-secrets}))]
 
-      {:apps-v1 apps-v1
-       :core-v1 core-v1
-       :helm-v3 helm-v3
-       :secrets secrets-data
+      {:secrets secrets-data
        :yaml-path values-path
        :yaml-values yaml-values
        :app-name app-name
