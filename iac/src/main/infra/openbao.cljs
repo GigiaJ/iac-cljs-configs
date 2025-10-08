@@ -1,12 +1,7 @@
-(ns infra.openbao
-  (:require
-   ["@pulumi/kubernetes" :as k8s]
+(ns infra.openbao 
+  (:require 
    ["@pulumi/pulumi" :as pulumi]
-   ["@pulumi/command/local" :as local]
-   ["fs" :as fs]
-   ["uuid" :as uuid]
-   ["js-yaml" :as yaml]
-   ["path" :as path]))
+   ["@pulumi/command/local" :as local]))
 
 (defn- create-wait-for-ready-script [namespace]
   "Script to wait for OpenBao pod to exist, then to be running, then for the service to be operational."
@@ -72,7 +67,7 @@
        "PID_FILE=\"/tmp/openbao-pf.pid\"\n\n"
        "# Cleanup function\n"
        "cleanup() {\n"
-       "    echo '🧹 Cleaning up...'\n"
+       "    echo 'Cleaning up...'\n"
        "    if [ -f \"$PID_FILE\" ]; then\n"
        "        PID=$(cat \"$PID_FILE\")\n"
        "        kill $PID 2>/dev/null || true\n"
@@ -241,38 +236,13 @@
        "    -d '{\"type\":\"kv-v2\"}' || echo '   (KV engine may already exist)'\n\n"
        "echo 'OpenBao secrets setup complete!'\n"))
 
-(defn deploy
-  "Deploy OpenBao via Helm chart with fully automated initialization."
-  [provider]
-  (let [core-v1 (.. k8s -core -v1)
-        helm-v3 (.. k8s -helm -v3)
-
-        vault-ns (new (.. core-v1 -Namespace)
-                      "vault-ns"
-                      (clj->js {:metadata {:name "vault"}})
-                      (clj->js {:provider provider}))
-
-        values-path (.join path js/__dirname ".." "resources" "openbao.yml")
-        helm-values (-> values-path
-                        (fs/readFileSync "utf8")
-                        (yaml/load))
-
-        chart (new (.. helm-v3 -Chart)
-                   "openbao"
-                   (clj->js {:chart "openbao"
-                             :fetchOpts {:repo "https://openbao.github.io/openbao-helm"}
-                             :namespace (.. vault-ns -metadata -name)
-                             :skipAwait true
-                             :values helm-values})
-                   (clj->js {:provider provider
-                             :dependsOn [vault-ns]}))
-
-        wait-ready-command
+(defn execute-fn [{:keys [dependencies]}]
+  (let [wait-ready-command
         (new local/Command
              "openbao-wait-ready"
              (clj->js {:create (create-wait-for-ready-script "vault")
                        :environment (clj->js {:KUBECONFIG "./kubeconfig.yaml"})})
-             (clj->js {:dependsOn [chart]}))
+             (clj->js {:dependsOn dependencies}))
 
         init-command
         (new local/Command
@@ -294,11 +264,41 @@
              "get-root-token"
              (clj->js {:create "cat /tmp/openbao-root-token 2>/dev/null || echo 'TOKEN_NOT_FOUND'"})
              (clj->js {:dependsOn [setup-secrets-command]}))]
-                                 {
-                                  :root-token (.-stdout root-token-command)
-                                  :address "http://127.0.0.1:8200"
-                                  }
-                                 ))
+    {:root-token (.-stdout root-token-command)
+     :address "http://127.0.0.1:8200"}))
+
+
+(def config
+  {:stack [:namespace :chart :execute]
+   :app-namespace "vault"
+   :app-name "openbao"
+   :helm-values-fn #(clj->js {:ui     {:enabled true}
+                              :server {:standalone     {:enabled true} 
+                                       :ha             {:enabled false}
+                                       :dataStorage    {:enabled      true
+                                                        :size         "2Gi"
+                                                        :storageClass "hcloud-volumes"}
+
+                                       :readinessProbe {:enabled true
+                                                        :path    "/v1/sys/health"}
+                                       :nodeSelector   {:location "de"}}})
+   :exec-fn  execute-fn
+   :vault-load-yaml false
+   :chart-repo  "https://openbao.github.io/openbao-helm"
+   :transformations (fn [props opts]
+                      (let [kind (:kind props)]
+                        (if (= kind "StatefulSet")
+                          {:props props
+                           :opts  (assoc opts :skipAwait true)}
+                          {:props props
+                           :opts  opts})))})
+
+
+
+
+
+
+
 
 (defn configure-vault-access
   "Configure Pulumi config with OpenBao credentials after deployment"
