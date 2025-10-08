@@ -1,14 +1,8 @@
-(ns k8s.services.productive.service
-  (:require
-   [utils.k8s :as k8s-utils]
-   [configs :refer [cfg]]))
+(ns k8s.services.productive.service)
 
-(defn deploy [provider vault-provider]
-  (k8s-utils/deploy-stack
-   :namespace :vault-secrets :deployment :service :ingress
-   {:provider provider
-    :vault-provider vault-provider
-    :app-namespace "generic"
-    :app-name "productive"
-    :image-port 80
-    :image "docker.io/johannesjo/super-productivity:latest"}))
+(def config
+  {:stack [:vault-secrets :deployment :service :ingress]
+   :app-namespace "generic"
+   :app-name      "superproductivity"
+   :image-port     80
+   :image   "docker.io/johannesjo/super-productivity:latest"})
