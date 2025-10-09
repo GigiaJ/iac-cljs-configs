@@ -4,13 +4,12 @@
    ["@pulumi/vault" :as vault]
    ["@pulumi/kubernetes" :as k8s]
    [infra.init :as infra] 
-   [infra.openbao :as openbao]
-   [k8s.add-ons.csi-driver.hetzner :as hetzner-csi]
-   [utils.k8s :refer [create-ns deploy-stack]]))
+   [service-registries :refer [base-service-registry shared-service-registry deployment-service-registry]]
+   [utils.k8s :refer [create-namespace deploy-stack]]))
 
 (defn deploy! [{:keys [provider vault-provider pulumi-cfg service-registry namespaces?]}]
   (let [namespaces (->> service-registry (map :app-namespace) (set))
-        _ (when namespaces? (doseq [namespace namespaces] (create-ns provider namespace)))
+        _ (when namespaces? (doseq [namespace namespaces] (create-namespace provider namespace nil nil)))
         deployment-results
         (into
          {}
@@ -56,7 +55,7 @@
                                #(deploy! {:provider provider
                                           :vault-provider nil 
                                           :pulumi-cfg pulumi-cfg 
-                                          :service-registry [hetzner-csi/config openbao/config] 
+                                          :service-registry base-service-registry
                                           :namespaces? false})
                                #(apps stack-ref pulumi-cfg provider configs)
                               )))))))]
@@ -69,6 +68,11 @@
      :vaultAddress (.apply app-outputs #(-> % .-openbao .-execute .-address))
      :vaultToken   (.apply app-outputs #(aget (-> % .-openbao .-execute) "root-token"))}))
 
+(defn extended-exports [init]
+  (let [;;exports (base.build-exports init)
+        app-outputs (get init :setup)]
+    #_(assoc exports :nextcloudUrl (.apply app-outputs #(get-in % [:nextcloud :nextcloud-url])))))
+
 (defn quick-deploy [configs exports]
   (-> 
    (initialize configs)
@@ -77,3 +81,10 @@
 
 (defn quick-deploy-base []
   (quick-deploy nil build-exports))
+
+(defn quick-deploy-shared []
+  (base/quick-deploy shared-service-registry extended-exports))
+
+(defn quick-deploy-services []
+  (base/quick-deploy deployment-service-registry extended-exports))
+
