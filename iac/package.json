@@ -27,6 +27,7 @@
         "@pulumi/vault": "^7.2.1",
         "@pulumi/cloudflare": "6.9.1",
         "@pulumi/docker": "4.9.0",
+        "@pulumiverse/harbor": "^3.10.21",
         "uuid": "13.0.0"
   },
       "devDependencies": {
