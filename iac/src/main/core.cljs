@@ -5,8 +5,7 @@
    ["child_process" :as cp]
    [promesa.core :as p]
    [base :as base]
-   [configs :refer [cfg]]
-   [deployments :as deployments]))
+   [configs :refer [cfg]]))
 
 
 (def init-stack (clj->js  {:projectName "hetzner-k3s"
@@ -17,15 +16,17 @@
 (def shared-platform-stack (clj->js  {:projectName "hetzner-k3s"
                                       :stackName "shared"
                                       :workDir "/home/jaggar/dotfiles/iac"
-                                      :program deployments/quick-deploy-shared}))
+                                      :program base/quick-deploy-shared}))
 
 (def deployment-stack (clj->js  {:projectName "hetzner-k3s"
                            :stackName "deployment"
                            :workDir "/home/jaggar/dotfiles/iac"
-                           :program deployments/quick-deploy-services}))
+                           :program base/quick-deploy-services}))
 
 (defn run []
-  (p/let [_ (println "Deploying cluster")
+  
+  (p/let [_ (println "Deploying cluster") 
+
           core-stack  (.createOrSelectStack pulumi-auto/LocalWorkspace
                                             init-stack)
           _ (.setConfig core-stack "hetzner-k3s:sshKeyName" #js {:value (-> cfg :sshKeyName) :secret false})
@@ -83,6 +84,7 @@
           _ (.setConfig app-stack "hetzner-k3s:privateKeySsh" #js {:value (-> cfg :privateKeySsh) :secret true})
           _ (.setConfig app-stack "kubeconfig" #js {:value kubeconfig :secret true})
           _ (.setConfig app-stack "vault:token" #js {:value vault-token :secret true})
+          _ (.setConfig app-stack "hcloud:token" #js {:value (-> cfg :hcloudToken) :secret true})
           _ (.setConfig app-stack "vault:address" #js {:value vault-address :secret true})
           _ (.setConfig app-stack "hetzner-k3s:apiToken" #js {:value (-> cfg :apiToken) :secret true})
 
