@@ -272,26 +272,26 @@
   {:stack [:namespace :chart :execute]
    :app-namespace "vault"
    :app-name "openbao"
-   :helm-values-fn #(clj->js {:ui     {:enabled true}
-                              :server {:standalone     {:enabled true} 
-                                       :ha             {:enabled false}
-                                       :dataStorage    {:enabled      true
-                                                        :size         "2Gi"
-                                                        :storageClass "hcloud-volumes"}
-
-                                       :readinessProbe {:enabled true
-                                                        :path    "/v1/sys/health"}
-                                       :nodeSelector   {:location "de"}}})
    :exec-fn  execute-fn
    :vault-load-yaml false
-   :chart-repo  "https://openbao.github.io/openbao-helm"
-   :transformations (fn [props opts]
-                      (let [kind (:kind props)]
-                        (if (= kind "StatefulSet")
-                          {:props props
-                           :opts  (assoc opts :skipAwait true)}
-                          {:props props
-                           :opts  opts})))})
+   :chart-opts {:fetchOpts {:repo "https://openbao.github.io/openbao-helm"}
+                :transformations (fn [props opts]
+                                   (let [kind (:kind props)]
+                                     (if (= kind "StatefulSet")
+                                       {:props props
+                                        :opts  (assoc opts :skipAwait true)}
+                                       {:props props
+                                        :opts  opts})))
+                :helm-values-fn #(clj->js {:ui     {:enabled true}
+                                           :server {:standalone     {:enabled true}
+                                                    :ha             {:enabled false}
+                                                    :dataStorage    {:enabled      true
+                                                                     :size         "2Gi"
+                                                                     :storageClass "hcloud-volumes"}
+
+                                                    :readinessProbe {:enabled true
+                                                                     :path    "/v1/sys/health"}
+                                                    :nodeSelector   {:location "de"}}})}})
 
 
 
