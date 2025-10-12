@@ -2,7 +2,7 @@
   (:require [utils.k8s :refer [make-transformer]]))
 
 (def config
-  {:stack [:vault-secrets :helm-fn :chart :ingress]
+  {:stack [:vault-secrets :chart :ingress]
    :app-namespace "nextcloud"
    :app-name      "nextcloud"
    :image-port 8080
