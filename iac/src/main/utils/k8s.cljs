@@ -35,7 +35,25 @@
     (merge-by-name a b)
     :else b))
 
+(defn generic-make-transformer
+  "Returns a Pulumi-compatible transformer that unwraps Output values via .apply."
+  [f]
+  (fn [{:keys [base-values app-name function-keys]}]
+    (.apply function-keys
+            (fn [smap]
+              (let [m (js->clj smap :keywordize-keys true)
+                    updates (f {:app-name app-name
+                                :function-keys m})
+                    result (clj->js (merge base-values updates))]
+                result)))))
 
+(defn resolve-template [template values]
+  (clojure.walk/postwalk
+   (fn [x]
+     (if (and (keyword? x) (contains? values x))
+       (get values x)
+       x))
+   template))
 (defn make-transformer
   "Given f that takes {:app-name .. :secrets ..}, where :secrets is a plain map
    (already unwrapped inside .apply), return a Helm transformer."
