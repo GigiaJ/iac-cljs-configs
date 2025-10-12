@@ -9,8 +9,8 @@
    :sshPersonalKeyName (get-env "PERSONAL_KEY_NAME" nil)
    :privateKeySsh (.toString (js/Buffer.from (get-env "PRIVATE_KEY" nil) "base64") "utf-8")
    :hcloudToken (get-env "HCLOUD_TOKEN" nil)
-   :wasabiId (get-env "WASABI_ID" nil)
-   :wasabiKey (get-env "WASABI_KEY" nil)
+   :wasabiId (get-env "WASABI_ACCESS_KEY" nil)
+   :wasabiKey (get-env "WASABI_SECRET_KEY" nil)
    
    :apiToken (get-env "CLOUDFLARE_TOKEN" nil)
 
