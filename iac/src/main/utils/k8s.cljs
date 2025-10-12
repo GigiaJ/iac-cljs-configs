@@ -11,10 +11,30 @@
 (defn assoc-ins [m path-vals]
   (reduce (fn [acc [path val]] (assoc-in acc path val)) m path-vals))
 
-(defn deep-merge [a b]
-  (merge-with (fn [x y]
-                (if (map? y) (deep-merge x y) y))
-              a b))
+(declare deep-merge)
+
+(defn merge-by-name
+  "Merges two vectors of maps by :name key."
+  [a b]
+  (let [a-map (into {} (map #(vector (:name %) %) a))
+        b-map (into {} (map #(vector (:name %) %) b))
+        merged (merge-with deep-merge a-map b-map)]
+    (vec (vals merged))))
+
+(defn deep-merge
+  "Recursively merges maps and intelligently merges vectors of maps by :name."
+  [a b]
+  (cond
+    (nil? b) a
+    (and (map? a) (map? b))
+    (merge-with deep-merge a b)
+
+    (and (vector? a) (vector? b)
+         (every? map? a) (every? map? b)
+         (some #(contains? % :name) (concat a b)))
+    (merge-by-name a b)
+    :else b))
+
 
 (defn make-transformer
   "Given f that takes {:app-name .. :secrets ..}, where :secrets is a plain map
@@ -87,16 +107,15 @@
 (defn create-ingress [provider app-namespace app-name host image-port dependencies ingress-options]
   (let [base-args {:metadata {:name app-name
                               :namespace app-namespace
-                              :annotations {"caddy.ingress.kubernetes.io/snippet" 
+                              :annotations {"caddy.ingress.kubernetes.io/snippet"
                                             (str "tls {\n  dns cloudflare {env.CLOUDFLARE_API_TOKEN}\n}\n" (:caddy-snippet ingress-options))}}
                    :spec
                    {:ingressClassName "caddy"
                     :rules [{:host host
                              :http {:paths [{:path "/"
                                              :pathType "Prefix"
-                                             :backend {:service {:name app-name
-                                                                 :port {:number image-port}}}}]}}]} 
-                   }
+                                             :backend {:service {:name (or (:service-name ingress-options) app-name)
+                                                                 :port {:number image-port}}}}]}}]}}
         final-args (deep-merge base-args ingress-options)]
     (new-resource (.. k8s -networking -v1 -Ingress) app-name final-args provider dependencies)))
 
@@ -154,7 +173,7 @@
                                     (assoc :transformations transformations-fn)))))
 
         deployment (when (requested-components :deployment)
-                     (create-deployment provider app-namespace app-name app-labels image image-port [docker-image] deployment-opts))
+                     (create-deployment provider app-namespace app-name app-labels image image-port (vec (filter some? [ns docker-image bind-secrets])) deployment-opts))
 
         service (when (requested-components :service)
                   (create-service provider app-namespace app-name app-labels image-port [deployment] service-opts))
