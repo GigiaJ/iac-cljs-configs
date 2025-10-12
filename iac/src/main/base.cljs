@@ -8,7 +8,7 @@
    [utils.k8s :refer [create-namespace deploy-stack]]))
 
 (defn deploy! [{:keys [provider vault-provider pulumi-cfg service-registry namespaces?]}]
-  (let [namespaces (->> service-registry (map :app-namespace) (set))
+  (let [namespaces (->> service-registry (remove #(contains? % :no-namespace)) (map :app-namespace) (set))
         _ (when namespaces? (doseq [namespace namespaces] (create-namespace provider namespace nil nil)))
         deployment-results
         (into
@@ -64,7 +64,7 @@
 (defn build-exports [init]
   (let [kubeconfig (get init :kubeconfig)
         app-outputs (get init :setup)]
-    {:kubeconfig   (get kubeconfig :kubeconfig)
+    {:kubeconfig   kubeconfig
      :vaultAddress (.apply app-outputs #(-> % .-openbao .-execute .-address))
      :vaultToken   (.apply app-outputs #(aget (-> % .-openbao .-execute) "root-token"))}))
 
