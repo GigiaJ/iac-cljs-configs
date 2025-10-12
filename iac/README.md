@@ -13,7 +13,14 @@ For now with an .env file set up with your PAT token for [Dockerhub](https://hub
 echo "$DOCKERHUB_PAT" | docker login --username gigiaj --password-stdin
 ```
 
+Plan to give OpenBao a single set of Wasabi IAM creds. Then OpenBao can be used to manage users and perms. Then we can make a role inside Bao.
 
+I plan to start by giving OpenBao a single set of Wasabi IAM credentials. This will be the only time I need to do that. Once Bao has those credentials, it will be able to manage users and permissions for me automatically. For example, I might call it project alpha. I will link that role to a Wasabi policy that defines what kind of access it should have, like permission to read and write to buckets that start with project alpha.
+
+That way when I need to Ican authenticate with Bao and ask for credentials tied to that role. Bao can then create a new IAM user in Wasabi, attach the correct policy, and generate temporary access keys. These keys are short-lived. This way we access storage, and once the time is up, Bao will automatically revoke the credentials and delete the user.
+This setup will give more secure, on demand access to Wasabi without having to manage IAM users or worry about long term credentials.
+
+Also the chart-opts in K8s can be simplified as we don't need to do the odd-wrapping we are currently doing and instead can provide the ability to pull secrets from the opts declaration themselves by making them a function that needs to resolve first.
 
 #### Goals
 The long term goal is for this to be a mostly uninteractive, to completion set up of my cloud services. Since it'll be IaC should I ever choose down the road to migrate certain ones to local nodes I run then that effort should also be more or less feasible.
@@ -115,3 +122,54 @@ Then inside deployments.cljs you simply need to add to the app-list function:
     {
      :cloudflare cloudflare-result}))
 ```
+
+--- Helpful tips and commands ---
+
+Something helpful with S3proxy is to use it locally and set up how you *need* to connect to the S3 provider of your choice. Combo this with a lightweight command line tool like s3cmd. The output of this will be the contents within the bucket name provided.
+
+```
+docker run -d -p 8081:80 --name s3proxy --env S3PROXY_ENDPOINT=http://0.0.0.0:80 --env S3PROXY_AUTHORIZATION=none --env JCLOUDS_PROVIDER=s3 --env JCLOUDS_IDENTITY=YOUR_SECRET_ID --env JCLOUDS_CREDENTIAL=YOUR_SECRET_KEY_HERE --env JCLOUDS_ENDPOINT=PROVIDER_ENDPOINT_HERE --env JCLOUDS_REGION=us-east-1 andrewgaul/s3proxy
+
+s3cmd --access_key="something" --secret_key="something" --host=localhost:8081 --host-bucket="" --no-ssl ls s3://BUCKET_NAME_HERE
+```
+
+
+Setting up IAM (if the provider supports it) for the individual bucket is a generally good idea to prevent any overreach for permissions.
+Here is a sample policy that more or less grants free reign to a SINGLE bucket:
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowS3CSIDriver",
+            "Effect": "Allow",
+            "Action": [
+                "s3:CreateBucket",
+                "s3:DeleteBucket",
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:DeleteObject",
+                "s3:ListBucket",
+                "s3:ListBucketMultipartUploads",
+                "s3:AbortMultipartUpload"
+            ],
+            "Resource": [
+                "arn:aws:s3:::BUCKET_NAME",
+                "arn:aws:s3:::BUCKET_NAME/*"
+            ]
+        }
+    ]
+}
+```
+You can then, of course, make that policy applied to users or a group however you wish.
+
+
+
+
+To check out the secrets inside a Kubernetes secrets resource you can use the following which combos JQ to parse the output:
+```
+kubectl get secret <secrets-name> -n <namespace> -o jsonpath='{.data}' | jq 'map_values(@base64d)'
+```
+kubectl get secret harbor-core -n harbor -o jsonpath='{.data}' | jq 'map_values(@base64d)'
+-----
+
