@@ -33,13 +33,13 @@
           _ (.setConfig core-stack "hetzner-k3s:sshPersonalKeyName" #js {:value (-> cfg :sshPersonalKeyName) :secret false})
           _ (.setConfig core-stack "hcloud:token" #js {:value (-> cfg :hcloudToken) :secret true})
           _ (.setConfig core-stack "hetzner-k3s:privateKeySsh" #js {:value (-> cfg :privateKeySsh) :secret true})
-          ;;core-result (.up core-stack #js {:onOutput println}) 
+          core-result (.up core-stack #js {:onOutput println}) 
 
           ;; Checks for changes on the core and prevents deleting the app-stack needlessly.
           ;; Important for the Openbao vault as it is deployed here and configured on the app-stack generally
-          core-preview-result (.preview core-stack #js {:onOutput println})
-          core-change-summary (js->clj (.-changeSummary core-preview-result) :keywordize-keys true)
-          core-result              (when (or (zero? (:delete core-change-summary 0))
+          ;;core-preview-result (.preview core-stack #js {:onOutput println})
+          ;;core-change-summary (js->clj (.-changeSummary core-preview-result) :keywordize-keys true)
+          #_core-result              #_(when (or (zero? (:delete core-change-summary 0))
                                              (pos? (:update core-change-summary 0))
                                              (pos? (:create core-change-summary 0)))
                                      (.up core-stack #js {:onOutput println}))
@@ -88,10 +88,10 @@
           _ (.setConfig app-stack "vault:address" #js {:value vault-address :secret true})
           _ (.setConfig app-stack "hetzner-k3s:apiToken" #js {:value (-> cfg :apiToken) :secret true})
 
-          app-result (.up app-stack #js {:onOutput println})
+;;          app-result (.up app-stack #js {:onOutput println})
 
-          app-outputs (.outputs app-stack)
-          _ (println app-outputs)
+  ;;        app-outputs (.outputs app-stack)
+    ;;      _ (println app-outputs)
           _ (.kill port-forward)]
     "All stacks deployed and cleaned up successfully."))
 
