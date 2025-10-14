@@ -8,7 +8,7 @@
    :app-name      "wasabi-csi"
    :chart-opts {:chart "csi-s3"
                 :fetchOpts {:repo "https://yandex-cloud.github.io/k8s-csi-s3/charts"}
-                :helm-values-fn #(clj->js {:controller {:enabled false
+                :values {:controller {:enabled false
                                                         :existingSecret {:name "wasabi-csi-secrets"}
                                                         :node {:existingSecret {:name "wasabi-csi-secrets"}}}}
                                           
@@ -19,7 +19,7 @@
                                                          :accessKeyID "something"
                                                          :secretAccessKey "something"
                                                          ;;:bucket "pulumi-harbor"
-                                                         })}
+                                                         }}
    :secret-opts {:stringData {:accessKeyID (-> cfg :wasabiId)
                               :secretAccessKey (-> cfg :wasabiKey)
                               :endpoint "http://s3proxy.s3proxy.svc.cluster.local"}}
