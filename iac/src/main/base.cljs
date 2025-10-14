@@ -5,11 +5,11 @@
    ["@pulumi/kubernetes" :as k8s]
    [infra.init :as infra] 
    [service-registries :refer [base-service-registry shared-service-registry deployment-service-registry]]
-   [utils.k8s :refer [create-namespace deploy-stack]]))
+   [utils.k8s :refer [create-namespace deploy-stack default-namespace]]))
 
 (defn deploy! [{:keys [provider vault-provider pulumi-cfg service-registry namespaces?]}]
   (let [namespaces (->> service-registry (remove #(contains? % :no-namespace)) (map :app-namespace) (set))
-        _ (when namespaces? (doseq [namespace namespaces] (create-namespace provider namespace nil nil)))
+        _ (when namespaces? (doseq [namespace namespaces] (create-namespace provider namespace nil (default-namespace {:app-namespace namespace}))))
         deployment-results
         (into
          {}
