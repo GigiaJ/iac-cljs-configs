@@ -31,7 +31,8 @@
     (let [yaml-values (when load-yaml
                         (js->clj (-> values-path
                                      (fs/readFileSync "utf8")
-                                     (yaml/load))))
+                                     (yaml/load))
+                                 :keywordize-keys true))
           {:keys [secrets-data bind-secrets]}
           (when vault-provider
             (let [vault-path (str "secret/" app-name)
