@@ -11,9 +11,6 @@
                [k8s.services.mesite.service :as mesite-service]
                [k8s.services.productive.service :as productive-service]))
 
-
-(def current-testing-registry [wasabi-csi/config s3proxy/config harbor/config])
-
 (def base-service-registry [hetzner-csi/config openbao/config ])
 
 (def shared-service-registry [#_minio/config dns/config caddy/config 
