@@ -1,7 +1,7 @@
 (ns k8s.add-ons.s3proxy)
 
 (def config
-  {:stack [:vault-secrets :deployment :service :ingress]
+  {:stack [:vault-secrets :deployment :service]
    :app-namespace "s3proxy"
    :app-name      "s3proxy"
    :image-port    80
@@ -12,7 +12,7 @@
     {:template
      {:spec
       {:containers
-       [{:name "s3proxy"
+       [{:name  "s3proxy"
          :env [{:name "S3PROXY_AUTHORIZATION" :value "none"}
                {:name "S3PROXY_ENDPOINT" :value "http://0.0.0.0:80"}
                ;;{:name "S3PROXY_IDENTITY" :value "local-identity"}
