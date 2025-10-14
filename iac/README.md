@@ -80,7 +80,7 @@ So Vault is only needed to be set-up once ever ideally. After the dummy values a
 
 To access the vault from your local -because opening it publicly would be a bad idea- you need to run:
 ```
-kubectl --kubeconfig=kubeconfig.yaml port-forward -n vault vault-0 8200:8200
+kubectl port-forward -n vault openbao-0 8200:8200
 ```
 This enables us to access the openbao UI in our browser.
 You can add secrets from this interface or if you want you can connect to the pod directly and run OpenBao CLI commands.
