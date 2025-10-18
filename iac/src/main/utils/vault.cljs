@@ -50,9 +50,20 @@
               {:secrets-data secrets-data
                :bind-secrets bind-secrets}))]
 
-      {:secrets secrets-data
-       :yaml-path values-path
-       :yaml-values yaml-values
-       :app-name app-name
-       :app-namespace app-namespace
-       :bind-secrets bind-secrets})))
+    {:secrets secrets-data
+     :yaml-path values-path
+     :yaml-values yaml-values
+     :app-name app-name
+     :app-namespace app-namespace
+     :bind-secrets bind-secrets})))
+
+
+(defn retrieve [vault-provider app-name app-namespace]
+  (let [vault-path (str "secret/" app-name)
+        secrets (pulumi/output (.getSecret (.-generic vault)
+                                           (clj->js {:path vault-path})
+                                           (clj->js {:provider vault-provider})))
+        secrets-data (.apply secrets #(.. % -data))]
+    {:secrets secrets-data
+     :app-name app-name
+     :app-namespace app-namespace}))
