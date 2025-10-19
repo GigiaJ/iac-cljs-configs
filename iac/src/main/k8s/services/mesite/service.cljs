@@ -5,4 +5,5 @@
    :image-port     80
    :app-namespace "generic"
    :app-name      "mesite"
-   :image    (str (-> cfg :docker-repo) "/mesite:latest")})
+   :deployment-opts {:spec {:template {:spec {:imagePullSecrets [{:name "harbor-creds-secrets"}]
+                                              :containers [{:name 'app-name :image '(str repo "/" app-name ":latest")}]}}}}})
