@@ -170,6 +170,33 @@ To check out the secrets inside a Kubernetes secrets resource you can use the fo
 ```
 kubectl get secret <secrets-name> -n <namespace> -o jsonpath='{.data}' | jq 'map_values(@base64d)'
 ```
-kubectl get secret harbor-core -n harbor -o jsonpath='{.data}' | jq 'map_values(@base64d)'
+kubectl get secret <SECRET-RESOURCE-NAME> -n harbor -o jsonpath='{.data}' | jq 'map_values(@base64d)'
 -----
 
+
+
+Generating an RSA PKCS#1 key with openssl:
+```
+openssl genrsa -traditional -out core-token-pkcs1.key 2048
+```
+
+Convert to a single line
+```
+awk '{printf "%s\\n", $0}' core-token-pkcs1.key
+```
+
+Make a cert
+```
+openssl req -new -x509 -key core-token-pkcs1.key -out core-token.crt -days 365 -subj "/CN=harbor-core"
+```
+
+Convert to a single line
+```
+awk '{printf "%s\\n", $0}' core-token.crt
+```
+
+Hashing the htpassword
+```
+npm install bcryptjs
+node -e 'console.log("admin:" + require("bcryptjs").hashSync("password", 10))'
+```
