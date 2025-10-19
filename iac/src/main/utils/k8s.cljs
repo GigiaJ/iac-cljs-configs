@@ -125,9 +125,7 @@
                                                     :app-namespace  app-namespace
                                                     :load-yaml      vault-load-yaml}))
 
-        {:keys [secrets yaml-values bind-secrets]} (or prepared-vault-data {:secrets nil :yaml-values nil :bind-secrets nil})
-        host (when secrets (.apply secrets #(aget % "host")))
-
+        {:keys [secrets yaml-values bind-secrets]} (or prepared-vault-data {:secrets nil :yaml-values nil :bind-secrets nil}) 
         ns (create-component requested-components :namespace provider app-namespace nil ns-opts (default-namespace options) secrets options)
         docker-image (create-component requested-components :docker-image nil app-name nil image-opts (default-image options) secrets options)
         secret (create-component requested-components :secret provider app-name nil secret-opts (default-secret options) secrets options)
@@ -142,7 +140,7 @@
                                             (update-in chart-opts [:values] #(deep-merge % (or yaml-values {}))))
                                 secrets
                                 options)
-        ingress (create-component requested-components :ingress provider app-name (vec (filter some? [service chart bind-secrets])) ingress-opts (default-ingress (assoc options :host host)) secrets options)
+        ingress (create-component requested-components :ingress provider app-name (vec (filter some? [service chart bind-secrets])) ingress-opts (default-ingress (assoc options :host (when secrets (.apply secrets #(aget % "host"))))) secrets options)
         execute (when (requested-components :execute)
                   (exec-fn (assoc options :dependencies  (vec (filter some? [chart ns secret storage-class deployment service ingress docker-image])))))]
 
