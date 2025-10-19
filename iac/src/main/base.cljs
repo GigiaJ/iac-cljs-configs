@@ -83,7 +83,16 @@
   (quick-deploy nil build-exports))
 
 (defn quick-deploy-shared []
-  (base/quick-deploy shared-service-registry extended-exports))
+  (base/quick-deploy
+   shared-service-registry
+   (fn [init] (let [app-outputs (get init :setup)]
+                {:url (.apply app-outputs #(-> % .-harbor (aget "vault-secrets") .-secrets .-host))
+                 :username (.apply app-outputs #(-> % .-harbor (aget "vault-secrets") .-secrets .-username))
+                 :password (.apply app-outputs #(-> % .-harbor (aget "vault-secrets") .-secrets .-password))
+                 }))))
+
+(defn quick-deploy-prepare []
+  (base/quick-deploy prepare-service-registry extended-exports))
 
 (defn quick-deploy-services []
   (base/quick-deploy deployment-service-registry extended-exports))
