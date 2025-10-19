@@ -17,9 +17,13 @@
    ;; Non-pulumi vals
    :resource-path (get-env "RESOURCE_PATH" "resources")
 
-   :secrets-json (-> (js/require "path")
-                     (.join js/__dirname ".." "init-secrets.json")
-                     (js/require)
-                     (js->clj :keywordize-keys true))
+   :secrets-json (try
+                   (-> (js/require "path")
+                       (.join js/__dirname ".." "init-secrets.json")
+                       (js/require)
+                       (js->clj :keywordize-keys true))
+                   (catch :default e
+                     (throw (js/Error. (str "Failed to load init-secrets.json: " e)))))
    :docker-repo (get-env "DOCKER_REPO" "")
+   :harbor-repo (get-env "HARBOR_REPO" "")
    :dns-email (get-env "DNS_EMAIL" "")})
