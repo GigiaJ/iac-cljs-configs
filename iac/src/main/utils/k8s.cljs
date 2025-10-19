@@ -4,7 +4,7 @@
    ["@pulumi/pulumi" :as pulumi]
    ["@pulumi/vault" :as vault]
    [utils.vault :as vault-utils]
-   [utils.general :refer [generic-transform deep-merge new-resource]]
+   [utils.general :refer [generic-transform deep-merge new-resource resource-factory]]
    ["@pulumi/docker" :as docker]
    ["path" :as path]
    [configs :refer [cfg]]))
