@@ -72,6 +72,19 @@
 (defn default-storage-class [{:keys [app-name]}]
   {:metadata {:name app-name}})
 
+(def default-resource-class-map
+  {:docker-image   (.. docker -Image)
+   :ingress        (.. k8s -networking -v1 -Ingress)
+   :secret         (.. k8s -core -v1 -Secret)
+   :namespace      (.. k8s -core -v1 -Namespace)
+   :deployment     (.. k8s -apps -v1 -Deployment)
+   :service        (.. k8s -core -v1 -Service)
+   :chart          (.. k8s -helm -v3 -Chart)
+   :config-map     (.. k8s -core -v1 -ConfigMap)
+   :storage-class  (.. k8s -storage -v1 -StorageClass)})
+
+#_(def create-resource (resource-factory default-resource-class-map))
+
 (defn create-resource [resource-type provider app-name dependencies opts]
   (let [resource-class (case resource-type
                          :docker-image         (.. docker -Image)
