@@ -129,7 +129,7 @@
         host (when secrets (.apply secrets #(aget % "host")))
 
         ns (create-component requested-components :namespace provider app-namespace nil ns-opts (default-namespace options) secrets options)
-        docker-image (create-component requested-components :docker-image nil nil nil image-opts (default-image options) secrets options)
+        docker-image (create-component requested-components :docker-image nil app-name nil image-opts (default-image options) secrets options)
         secret (create-component requested-components :secret provider app-name nil secret-opts (default-secret options) secrets options)
         config-map (create-component requested-components :config-map provider app-name nil config-map-opts (default-config-map options) secrets options)
         storage-class (create-component requested-components :storage-class provider app-name nil storage-class-opts (default-storage-class options) secrets options)
