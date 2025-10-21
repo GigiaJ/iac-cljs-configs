@@ -23,4 +23,4 @@
 
 (def prepare-service-registry [harbor-prepare/config])
 
-(def deployment-service-registry [#_nextcloud-service/config #_foundryvtt-service/config mesite-service/config productive-service/config])
+(def deployment-service-registry [#_nextcloud-service/config foundryvtt-service/config mesite-service/config productive-service/config])
