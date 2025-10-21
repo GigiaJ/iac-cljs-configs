@@ -1,4 +1,4 @@
-(ns k8s.services.mesite.service (:require [configs :refer [cfg]]))
+(ns k8s.services.mesite.service)
 
 (def config
   {:stack [:vault-secrets :deployment :service :ingress]
