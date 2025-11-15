@@ -1,6 +1,4 @@
-(ns utils.general
-  (:require ["@pulumi/kubernetes" :as k8s]
-            [clojure.walk :as walk]))
+(ns utils.general (:require [clojure.walk :as walk]))
 
 
 (defn new-resource [resource-type resource-name final-args provider dependencies]
@@ -120,13 +118,15 @@
             (fn [smap]
               (let [m (js->clj smap :keywordize-keys true)
                     final-args (clj->js (deep-merge base-values (resolve-template opts m options)))]
+                ;;(js/console.log final-args)
                 (creator-fn final-args))))))
 
 
 (defn resource-factory
-  [resource-map]
+  [component-specs]
   (fn [resource-type provider app-name dependencies opts]
-    (let [resource-class (get resource-map resource-type)]
+    (let [spec (get component-specs resource-type)
+          resource-class (:constructor spec)]
       (if resource-class
         (new-resource resource-class app-name opts provider dependencies)
         (throw (js/Error. (str "Unknown resource type: " resource-type)))))))
@@ -151,3 +151,82 @@
        defaults
        secrets
        options))))
+
+(defn deploy-stack-factory [func]
+  (fn [& args]
+    (let [[component-kws [options]] (split-with keyword? args)
+          requested-components (set component-kws)]
+      (func requested-components options))))
+
+(defn iterate-stack
+  [provider vault-data options secrets requested-components create-component-fn component-specs lifecycle-hooks]
+  (let [base-components
+        (reduce
+         (fn [acc [k {:keys [deps-fn opts-key defaults-fn]}]]
+           (let [env {:provider provider
+                      :options options
+                      :secrets secrets
+                      :components acc}
+                 app-name (get options :resource-name)
+                 deps     (deps-fn env)
+                 opts     (get options opts-key)
+                 defaults (defaults-fn env)
+                 component (create-component-fn requested-components k provider app-name deps opts defaults secrets options)]
+             (assoc acc k component)))
+         {:vault-secrets vault-data}
+         (select-keys component-specs requested-components))
+
+        final-components
+        (if lifecycle-hooks
+          (reduce
+           (fn [acc k]
+             (if-let [hook (get lifecycle-hooks k)]
+               (assoc acc k (hook {:options options
+                                   :components acc
+                                   :secrets secrets}))
+               acc))
+           base-components
+           requested-components)
+          base-components)]
+    final-components))
+
+(defn flatten-resource-groups
+  "Transforms a nested resource map into a flat, qualified-keyword map.
+   Example:
+   (flatten-resource-groups {:k8s {:chart {} :ingress {}}})
+   => {:k8s:chart {} :k8s:ingress {}}"
+  [config]
+  (into {}
+        (mapcat
+         (fn [[k v]]
+           (if (and (keyword? k) (map? v))
+             (map (fn [[inner-k inner-v]]
+                    [(keyword (name k) (name inner-k)) inner-v])
+                  v)
+             [[k v]]))
+         config)))
+
+
+(defn- is-output? [x] (some? (and x (.-__pulumiOutput x))))
+
+(defn p-apply-or-resolve
+  "Runtime helper. If 'v' is an Output, applies 'f' to it.
+   If 'v' is a plain value, calls 'f' with it."
+  [v f]
+  (if (is-output? v)
+    (.apply v f)
+    (f v)))
+
+(defn is-output? [x]
+  (some? (and x (.-__pulumiOutput x))))
+
+(defn p-chain [v f]
+  (if (is-output? v)
+    (.apply v f)
+    (f v)))
+
+(defn p-map [v f]
+  (p-chain v #(f %)))
+
+(defn p-lift [v]
+ (if (is-output? v) v (js/Promise.resolve v)))
