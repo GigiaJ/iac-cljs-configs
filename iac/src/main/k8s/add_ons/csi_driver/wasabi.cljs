@@ -21,6 +21,6 @@
                                                          ;;:bucket "pulumi-harbor"
                                                          }}
    :secret-opts {:stringData {:accessKeyID (-> cfg :wasabiId)
-                              :secretAccessKey (-> cfg :wasabiKey)
-                              :endpoint "http://s3proxy.s3proxy.svc.cluster.local"}}
-   :vault-load-yaml false})
+                             :secretAccessKey (-> cfg :wasabiKey)
+                             :endpoint "http://wasabi-proxy.wasabi-proxy.svc.cluster.local"}}
+  :vault-load-yaml false})
