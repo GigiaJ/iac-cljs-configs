@@ -1,42 +1,39 @@
 (ns utils.harbor
   (:require
-   [utils.general :refer [resource-factory component-factory]]
+   [utils.general :refer [resource-factory component-factory deploy-stack-factory iterate-stack]]
    [utils.vault :refer [retrieve]]
-    ["uuid" :as uuid]
+   ["uuid" :as uuid]
    ["@pulumiverse/harbor" :as harbor]))
 
-(defn default-project [{:keys [name]}]
-  {:name name
+(defn project [{:keys [app-name]}]
+  {:name app-name
    :public false})
 
-(defn default-robot [{:keys [name]}]
-  {:name (str name "-robot")
+(defn robot [{:keys [app-name]}]
+  {:name (str app-name "-robot")
    :level "project"
    :permissions [{:kind "project"
-                  :namespace name
+                  :namespace app-name
                   :access [{:action "push" :resource "repository"}
                            {:action "pull" :resource "repository"}
                            {:action "list" :resource "repository"}]}]})
 
-(defn create-provider [final-args]
-  (let [name (str "harbor-provider-" (uuid/v4))]
-    (harbor/Provider. name final-args)))
+(def defaults
+  {:project project
+   :robot robot})
 
-(def default-resource-class-map
-  {:project             (.. harbor -Project)
-   :robot-account       (.. harbor -RobotAccount)})
-(def create-resource (resource-factory default-resource-class-map))
-(def create-component (component-factory create-resource))
- 
+(def provider-template
+  {:constructor (.. harbor -Provider)
+   :name "harbor-provider"
+   :config {:url      'url
+            :username 'username
+            :password 'password}})
 
-(defn deploy-stack
-  "Deploys a versatile stack of Harbor resources"
-  [& args]
-  (let [[component-kws [options]] (split-with keyword? args)
-        requested-components (set component-kws)
-        {:keys [provider vault-provider pulumi-cfg name harbor-app-name harbor-app-namespace project-opts robot-opts]} options
-        prepared-vault-data (when (requested-components :vault-secrets) (retrieve vault-provider harbor-app-name harbor-app-namespace))
-        {:keys [secrets]} (or prepared-vault-data {:secrets nil})
-        project (create-component requested-components :project provider name (vec (filter some? [provider])) project-opts (default-project options) secrets options)
-        robot-account (create-component requested-components :robot-account provider (str name "-robot") (vec (filter some? [provider project])) robot-opts (default-robot (assoc options :project project)) secrets options)]
-    {:project project, :robot-account robot-account, :vault-secrets prepared-vault-data}))
+
+(def component-specs-defs
+  {:root-sym 'harbor
+   :provider-key :harbor
+   :resources
+   {:project       {:path ['-Project]}
+    :robot-account {:path ['-RobotAccount]
+                    :defaults-name 'robot}}})
