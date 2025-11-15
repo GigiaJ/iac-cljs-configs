@@ -26,4 +26,7 @@
                      (throw (js/Error. (str "Failed to load init-secrets.json: " e)))))
    :docker-repo (get-env "DOCKER_REPO" "")
    :harbor-repo (get-env "HARBOR_REPO" "")
+   :public-image-registry-url (get-env "PUBLIC_IMAGE_REGISTRY_URL" "")
+   :public-image-registry-username (get-env "PUBLIC_IMAGE_REGISTRY_USERNAME" "")
+   :public-image-registry-password (get-env "PUBLIC_IMAGE_REGISTRY_PASSWORD" "")
    :dns-email (get-env "DNS_EMAIL" "")})
