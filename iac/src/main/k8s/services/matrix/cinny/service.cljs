@@ -1,10 +1,10 @@
-(ns k8s.services.foundryvtt.service)
+(ns k8s.services.matrix.cinny.service)
 
 (def config
   {:stack [:vault-secrets :docker-image :deployment :service :ingress]
-   :image-port     30000
-   :app-namespace "generic"
-   :app-name      "foundry"
+   :image-port     80
+   :app-namespace "matrix"
+   :app-name      "cinny"
    :image-opts {:build {:args {:FOUNDRY_USERNAME 'FOUNDRY_USERNAME
                                :FOUNDRY_PASSWORD 'FOUNDRY_PASSWORD}}
                 :imageName '(str repo "/" app-name ":latest")}

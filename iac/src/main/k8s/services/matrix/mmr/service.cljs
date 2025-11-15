@@ -1,0 +1,21 @@
+
+(ns k8s.services.matrix.mmr.service)
+
+(def config
+  {:stack [:vault-secrets :deployment :service :ingress]
+   :image-port    80
+   :app-namespace "matrix"
+   :app-name      "matrix-media-repo"
+   :deployment-opts {:spec {:template {:spec {:containers [{:name 'app-name :image '(str repo "/" app-name ":v1.3.8")
+                                                            :volumeMounts [{:name "data" :mountPath "/data"}]}]
+                                              :initContainers [{:name "init-permissions"
+                                                                :image "busybox:latest"
+                                                                :command ["sh" "-c" "chown -R 1000:1000 /data"]
+                                                                :volumeMounts [{:name "data" :mountPath "/data"}]
+                                                                :securityContext {:runAsUser 0 :runAsGroup 0}}]
+                                              :volumes [{:name "data" :hostPath {:path "/opt/mmr/data" :type "DirectoryOrCreate"}}]}}}}})
+
+
+
+;;
+;;      - ./personal/matrix/mmr:/data
