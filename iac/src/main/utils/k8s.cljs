@@ -1,16 +1,10 @@
-(ns utils.k8s
-  (:require
-   ["@pulumi/kubernetes" :as k8s]
-   ["@pulumi/pulumi" :as pulumi]
-   ["@pulumi/vault" :as vault]
-   [utils.vault :as vault-utils]
-   [utils.general :refer [generic-transform deep-merge new-resource resource-factory]]
-   ["@pulumi/docker" :as docker]
-   ["path" :as path]
-   [configs :refer [cfg]]))
+(ns utils.k8s (:require ["@pulumi/kubernetes" :as k8s]))
 
 
-(defn default-ingress [{:keys [app-name app-namespace host image-port ingress-opts]}]
+
+
+
+(defn ingress [{:keys [app-name app-namespace host ingress-opts]}]
   {:metadata {:name app-name
               :namespace app-namespace
               :annotations {"caddy.ingress.kubernetes.io/tls.issuer" "cloudflare"
@@ -24,25 +18,25 @@
                    :http {:paths [{:path "/"
                                    :pathType "Prefix"
                                    :backend {:service {:name app-name
-                                                       :port {:number image-port}}}}]}}]}})
+                                                       :port {:number 80}}}}]}}]}})
 
-(defn default-chart [{:keys [app-name app-namespace]}]
+(defn chart [{:keys [app-name app-namespace]}]
   {:chart     app-name
    :namespace app-namespace
    :transformations []})
 
-(defn default-config-map [{:keys  [app-name app-namespace]}]
+(defn config-map [{:keys  [app-name app-namespace]}]
   {:metadata {:namespace app-namespace
               :name app-name}
    :data {}})
 
-(defn default-service [{:keys  [app-name app-namespace app-labels image-port]}]
+(defn service [{:keys  [app-name app-namespace app-labels image-port]}]
   {:metadata {:namespace app-namespace
               :name app-name}
    :spec {:selector app-labels
           :ports [{:port 80 :targetPort image-port}]}})
 
-(defn default-deployment [{:keys [app-name app-namespace app-labels image image-port]}]
+(defn deployment [{:keys [app-name app-namespace app-labels image image-port]}]
   {:metadata {:namespace app-namespace
               :name app-name}
    :spec {:selector {:matchLabels app-labels}
@@ -53,110 +47,93 @@
                               :image image
                               :ports [{:containerPort image-port}]}]}}}})
 
-(defn default-image [{:keys [app-name]}]
-  (let [context-path (.. path (join "." (-> cfg :resource-path)))
-        dockerfile-path (.. path (join context-path (str app-name ".dockerfile")))
-        base-args {:build {:context context-path
-                           :dockerfile dockerfile-path}
-                   :imageName (str (-> cfg :docker-repo) "/" app-name ":latest")}]
-    base-args))
 
-
-(defn default-namespace [{:keys [app-namespace]}]
+(defn nspace [{:keys [app-namespace]}]
   {:metadata {:name app-namespace}})
 
-(defn default-secret [{:keys [app-name app-namespace]}]
+(defn secret [{:keys [app-name app-namespace]}]
   {:metadata {:name (str app-name "-secrets")
               :namespace app-namespace}})
 
-(defn default-storage-class [{:keys [app-name]}]
+(defn storage-class [{:keys [app-name]}]
   {:metadata {:name app-name}})
 
-(def default-resource-class-map
-  {:docker-image   (.. docker -Image)
-   :ingress        (.. k8s -networking -v1 -Ingress)
-   :secret         (.. k8s -core -v1 -Secret)
-   :namespace      (.. k8s -core -v1 -Namespace)
-   :deployment     (.. k8s -apps -v1 -Deployment)
-   :service        (.. k8s -core -v1 -Service)
-   :chart          (.. k8s -helm -v3 -Chart)
-   :config-map     (.. k8s -core -v1 -ConfigMap)
-   :storage-class  (.. k8s -storage -v1 -StorageClass)})
+(def defaults
+  {:ingress       ingress
+   :chart         chart
+   :config-map    config-map
+   :service       service
+   :deployment    deployment
+   :namespace     nspace
+   :secret        secret
+   :storage-class storage-class})
 
-#_(def create-resource (resource-factory default-resource-class-map))
+(def component-specs-defs
+  {:root-sym 'k8s
+   :provider-key :k8s
+   :resources
+   {:namespace  {:path ['-core '-v1 '-Namespace]}
+    :secret     {:path ['-core '-v1 '-Secret]}
+    :deployment {:path ['-apps '-v1 '-Deployment]}
+    :service    {:path ['-core '-v1 '-Service]}
+    :ingress    {:path ['-networking '-v1 '-Ingress]}
+    :chart      {:path ['-helm '-v3 '-Chart]
+                 :defaults-fn
+                 '(fn [env]
+                    (deep-merge (default/chart (:options env))
+                                (update-in (get-in (:options env) [:k8s:chart-opts]) [:values]
+                                           #(deep-merge % (or (:yaml-values (:options env)) {})))))}}})
 
-(defn create-resource [resource-type provider app-name dependencies opts]
-  (let [resource-class (case resource-type
-                         :docker-image         (.. docker -Image)
-                         :ingress       (.. k8s -networking -v1 -Ingress)
-                         :secret        (.. k8s -core -v1 -Secret)
-                         :namespace     (.. k8s -core -v1 -Namespace)
-                         :deployment    (.. k8s -apps -v1 -Deployment)
-                         :service       (.. k8s -core -v1 -Service)
-                         :chart         (.. k8s -helm -v3 -Chart)
-                         :config-map    (.. k8s -core -v1 -ConfigMap)
-                         :storage-class (.. k8s -storage -v1 -StorageClass)
-                         (throw (js/Error. (str "Unknown resource type: " resource-type))))]
-    (new-resource resource-class app-name opts provider dependencies)))
+#_(def component-specs
+  :k8s:namespace {:constructor (.. k8s -core -v1 -Namespace)
+                  :provider-key :k8s
+                  :defaults-fn (fn [env] (defaults/namespace (:options env)))}
+  
+  :k8s:secret {:constructor (.. k8s -core -v1 -Secret)
+               :provider-key :k8s
+               :defaults-fn (fn [env] (default/secret (:options env)))}
+  
+  :k8s:deployment {:constructor (.. k8s -apps -v1 -Deployment)
+                   :provider-key :k8s
+                   :defaults-fn (fn [env] (default/deployment (:options env)))}
+  
+  :k8s:service {:constructor (.. k8s -core -v1 -Service)
+                :provider-key :k8s
+                :defaults-fn (fn [env] (default/service (:options env)))}
+  
+  :k8s:ingress {:constructor (.. k8s -networking -v1 -Ingress)
+                :provider-key :k8s
+                :defaults-fn (fn [env] (default/ingress (:options env)))}
+  
+  :k8s:chart {:constructor (.. k8s -helm -v3 -Chart)
+              :provider-key :k8s
+              :defaults-fn (fn [env]
+                             (deep-merge (default/chart (:options env))
+                                         (update-in (get-in (:options env) [:k8s:chart-opts]) [:values]
+                                                    #(deep-merge % (or (:yaml-values (:options env)) {})))))})
 
-(defn create-component
-  "Checks if a component is requested and, if so, creates it using generic-transform."
-  [requested-components
-   resource-type
-   provider
-   app-name
-   dependencies
-   component-opts
-   defaults
-   secrets
-   options]
-
-  (when (requested-components resource-type)
-    (generic-transform
-     (fn [final-args]
-       (create-resource resource-type provider app-name dependencies final-args))
-     component-opts
-     defaults
-     secrets
-     options)))
-
-(defn deploy-stack
-  "Deploys a versatile stack of K8s resources, including optional Helm charts."
-  [& args]
-  (let [[component-kws [options]] (split-with keyword? args)
-        requested-components (set component-kws)
-
-        {:keys [provider vault-provider pulumi-cfg app-namespace app-name image image-port vault-load-yaml exec-fn
-                storage-class-opts secret-opts config-map-opts ns-opts image-opts ingress-opts service-opts deployment-opts chart-opts]
-         :or {vault-load-yaml false image-port 80}} options
-        options (merge options {:app-labels {:app app-name} :image-port image-port})
-
-        prepared-vault-data (when (requested-components :vault-secrets)
-                              (vault-utils/prepare {:provider       provider
-                                                    :vault-provider vault-provider
-                                                    :app-name       app-name
-                                                    :app-namespace  app-namespace
-                                                    :load-yaml      vault-load-yaml}))
-
-        {:keys [secrets yaml-values bind-secrets]} (or prepared-vault-data {:secrets nil :yaml-values nil :bind-secrets nil}) 
-        ns (create-component requested-components :namespace provider app-namespace nil ns-opts (default-namespace options) secrets options)
-        docker-image (create-component requested-components :docker-image nil app-name nil image-opts (default-image options) secrets options)
-        secret (create-component requested-components :secret provider app-name nil secret-opts (default-secret options) secrets options)
-        config-map (create-component requested-components :config-map provider app-name nil config-map-opts (default-config-map options) secrets options)
-        storage-class (create-component requested-components :storage-class provider app-name nil storage-class-opts (default-storage-class options) secrets options)
-        deployment (create-component requested-components :deployment provider app-name (vec (filter some? [ns docker-image bind-secrets])) deployment-opts (default-deployment options) secrets options)
-        service (create-component requested-components :service provider app-name (vec (filter some?  [ns deployment bind-secrets])) service-opts (default-service options) secrets options)
-        chart (create-component requested-components :chart provider app-name
-                                (vec (filter some? [ns docker-image bind-secrets]))
-                                chart-opts
-                                (deep-merge (default-chart options)
-                                            (update-in chart-opts [:values] #(deep-merge % (or yaml-values {}))))
-                                secrets
-                                options)
-        ingress (create-component requested-components :ingress provider app-name (vec (filter some? [service chart bind-secrets])) ingress-opts (default-ingress (assoc options :host (when secrets (.apply secrets #(aget % "host"))))) secrets options)
-        execute (when (requested-components :execute)
-                  (exec-fn (assoc options :dependencies  (vec (filter some? [chart ns secret storage-class deployment service ingress docker-image])))))]
+(def provider-template
+ {:constructor (.. k8s -Provider)
+  :name "k8s-provider"
+  :config {:kubeconfig 'kubeconfig}})
 
 
-
-    {:namespace ns, :vault-secrets prepared-vault-data, :secret secret, :config-map config-map, :docker-image docker-image :storage-class storage-class, :chart chart, :deployment deployment, :service service, :ingress ingress :execute execute}))
+(defn pre-deploy-rule
+  "k8s pre-deploy rule: scans the service registry and creates
+   all unique namespaces. Returns a map of created namespaces
+   keyed by their name."
+  [{:keys [service-registry provider]}]
+  (let [namespaces (->> service-registry
+                        (remove #(contains? % :no-namespace))
+                        (map :app-namespace)
+                        (remove nil?)
+                        (set))]
+    (into {}
+          (for [ns-name namespaces]
+            (let [resource-name ns-name
+                  ns-config {:metadata {:name resource-name
+                                        :namespace ns-name}}
+                  ns-resource (new (.. k8s -core -v1 -Namespace) resource-name
+                                   (clj->js ns-config)
+                                   (clj->js {:provider provider}))]
+              [ns-name ns-resource])))))
