@@ -3,14 +3,14 @@
    [configs :refer [cfg]]))
 
 (def config
-  {:stack [:secret :chart]
+  {:stack [:k8s:secret :k8s:chart]
    :app-namespace "kube-system"
    :app-name "hcloud-csi"
    :vault-load-yaml false
-   :secret-opts {:metadata {:name "hcloud"
+   :k8s:secret-opts {:metadata {:name "hcloud"
                             :namespace "kube-system"}
                  :stringData {:token  (-> cfg :hcloudToken)}}
-   :chart-opts {:fetchOpts {:repo "https://charts.hetzner.cloud"}
+   :k8s:chart-opts {:fetchOpts {:repo "https://charts.hetzner.cloud"}
                 :values {:controller {:enabled false
                                       :existingSecret {:name "hcloud-csi-secret"}
                                       :node {:existingSecret {:name "hcloud-csi-secret"}}}}}})
