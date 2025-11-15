@@ -57,10 +57,10 @@
        "fi\n\n"
        "echo '--- Finished worker install ---'\n"))
 
-(defn create-cluster [cfg]
-  (let [ssh-key    (.require cfg "sshKeyName")
-        personal-key (.require cfg "sshPersonalKeyName")
-        priv-key   (.requireSecret cfg "privateKeySsh")
+(defn create-cluster [{:keys [pulumi-cfg]}]
+  (let [ssh-key    (.require pulumi-cfg "sshKeyName")
+        personal-key (.require pulumi-cfg "sshPersonalKeyName")
+        priv-key   (.requireSecret pulumi-cfg "privateKeySsh")
 
         firewall   (hcloud/Firewall.
                     "k3s-firewall"
@@ -164,4 +164,9 @@
                                           "echo 'Error: Timed out waiting for node " worker-name ".' >&2 && "
                                           "exit 1;"))))))})
          (clj->js {:dependsOn [kubeconfig-cmd worker-de]}))]
-    (pulumi/secret (.-stdout kubeconfig-cmd))))
+    {:kubeconfig (pulumi/secret (.-stdout kubeconfig-cmd))}))
+
+(def config
+  {:stack [:generic:execute]
+   :app-name "cluster"
+   :exec-fn  create-cluster})
