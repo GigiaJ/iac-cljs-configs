@@ -269,12 +269,12 @@
 
 
 (def config
-  {:stack [:namespace :chart :execute]
+  {:stack [:k8s:namespace :k8s:chart :generic:execute]
    :app-namespace "vault"
    :app-name "openbao"
    :exec-fn  execute-fn
    :vault-load-yaml false
-   :chart-opts {:fetchOpts {:repo "https://openbao.github.io/openbao-helm"}
+   :k8s:chart-opts {:fetchOpts {:repo "https://openbao.github.io/openbao-helm"}
                 :transformations [(fn [props opts]
                                    (let [kind (:kind props)]
                                      (if (= kind "StatefulSet")
