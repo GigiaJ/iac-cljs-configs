@@ -3,7 +3,6 @@
    ["@pulumi/kubernetes" :as k8s]
    ["@pulumi/pulumi" :as pulumi]
    ["@pulumi/vault" :as vault]
-   [promesa.core :as p]
    ["fs" :as fs]
    ["js-yaml" :as yaml]
    ["path" :as path]
@@ -53,17 +52,20 @@
     {:secrets secrets-data
      :yaml-path values-path
      :yaml-values yaml-values
-     :app-name app-name
-     :app-namespace app-namespace
      :bind-secrets bind-secrets})))
 
 
-(defn retrieve [vault-provider app-name app-namespace]
+(defn retrieve [vault-provider app-name]
   (let [vault-path (str "secret/" app-name)
         secrets (pulumi/output (.getSecret (.-generic vault)
                                            (clj->js {:path vault-path})
                                            (clj->js {:provider vault-provider})))
         secrets-data (.apply secrets #(.. % -data))]
-    {:secrets secrets-data
-     :app-name app-name
-     :app-namespace app-namespace}))
+    {:secrets secrets-data}))
+
+
+(def provider-template
+  {:constructor (.. vault -Provider)
+   :name "vault-provider"
+   :config {:address 'vaultAddress
+            :token   'vaultToken}})
