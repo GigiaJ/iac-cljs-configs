@@ -7,7 +7,6 @@
              ""
              "  reverse_proxy https://s3.wasabisys.com {" 
              "    flush_interval -1"
-             "    redirect_mode off"
              "    transport http {"
              "      versions 1.1"
              "    }"
