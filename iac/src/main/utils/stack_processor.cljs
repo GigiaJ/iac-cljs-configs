@@ -236,26 +236,25 @@
   (let [app-name       (:app-name full-config)
         dependsOn      (:dependsOn full-config)
         component-opts (assoc (:execute-opts full-config)
-                              :pulumi-cfg (:pulumi-cfg full-config))
-        env            {:options full-config :secrets (:secrets full-config)}
+                              :pulumi-cfg (:pulumi-cfg full-config)
+                              :secrets (:secrets full-config)
+                              )
         defaults      {}
         exec-fn        (:exec-fn full-config)
         resource-id    (str app-name "-exec")
         provider #js {:create (fn [inputs-js]
                                 (js/Promise.
                                  (fn [resolve _reject]
-                                   (let [outs-js "cats"]
-                                     (resolve
-                                      #js {:id resource-id
-                                           :outs inputs-js})))))
+                                   (resolve
+                                    #js {:id resource-id
+                                         :outs inputs-js}))))
                       :delete (fn [id old-inputs-js]
                                 (js/Promise.resolve))
                       :update (fn [id old-inputs-js new-inputs-js]
                                 (js/Promise.
                                  (fn [resolve _reject]
-                                   (let [new-outs-js "cats"]
-                                     (resolve #js {:outs new-inputs-js})))))}
-        gen (generic-transform #(clj->js (exec-fn (js->clj % :keywordize-keys true))) component-opts defaults (:secrets env) full-config)
+                                     (resolve #js {:outs new-inputs-js}))))}
+        gen (generic-transform #(clj->js (exec-fn (js->clj % :keywordize-keys true))) component-opts defaults (:secrets full-config) full-config)
         creator-fn (fn [inputs]
                      (pulumi/dynamic.Resource.
                       provider
