@@ -22,14 +22,14 @@
 (defn get-provider-outputs-config []
   {:vault  {:stack :init
             :outputs ["vaultAddress" "vaultToken"]}
-   #_:harbor #_{:stack :shared
+   :harbor {:stack :shared
                 :outputs ["username" "password" "url"]}
    :k8s   {:stack :init
            :outputs ["kubeconfig"]}})
 
 (defn get-stack-refs []
-  {:init (new pulumi/StackReference "init")
-   #_:shared #_(new pulumi/StackReference "shared")})
+  {:init (new pulumi/StackReference "init") 
+   :shared (new pulumi/StackReference "shared")})
 
 (defn extract-expanded-keywords [stack]
   (let [expand-chain
