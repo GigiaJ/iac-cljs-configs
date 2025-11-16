@@ -12,7 +12,6 @@
    :app-namespace "generic"
    :image-port 80
    :vault-load-yaml false
-   :exec-fn execute-fn 
    :k8s:secret-opts {:metadata
                      {:name "harbor-creds-secrets"
                       :namespace "kube-system"
