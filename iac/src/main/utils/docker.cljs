@@ -8,9 +8,9 @@
 (defn image [{:keys [app-name]}]
   (let [context-path (.. path (join "." (-> cfg :resource-path)))
         dockerfile-path (.. path (join context-path (str app-name ".dockerfile")))
-        base-args {;;:context {:location context-path}
-                   ;;:dockerfile {:location dockerfile-path}
-                   ;;:imageName (str (-> cfg :docker-repo) "/" app-name ":latest")
+        base-args {:context {:location context-path}
+                   :dockerfile {:location dockerfile-path}
+                   :imageName (str (-> cfg :docker-repo) "/" app-name ":latest")
                    }]
     base-args))
 
