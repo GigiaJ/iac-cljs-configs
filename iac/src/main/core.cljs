@@ -64,48 +64,47 @@
           vault-token   (-> core-outputs (aget "vaultToken") (.-value))
           kubeconfig    (-> core-outputs (aget "kubeconfig") (.-value))
 
-           _ (println core-outputs)
+          _ (println core-outputs)
 
 
           _ (p/delay 2000)
           port-forward (cp/spawn "kubectl"
-                                   #js ["port-forward"
-                                        "svc/openbao"
-                                        "8200:8200"
-                                        "-n"
-                                        "vault"])
+                                 #js ["port-forward"
+                                      "svc/openbao"
+                                      "8200:8200"
+                                      "-n"
+                                      "vault"])
 
           _ (p/delay 3000)
 
-             shared-stack (.createOrSelectStack pulumi-auto/LocalWorkspace shared-platform-stack)
-             _ (config-core shared-stack kubeconfig vault-token vault-address)
+          shared-stack (.createOrSelectStack pulumi-auto/LocalWorkspace shared-platform-stack)
+          _ (config-core shared-stack kubeconfig vault-token vault-address)
 
-               shared-results (.up shared-stack #js {:onOutput println})
-               shared-outputs (.outputs shared-stack)
-               _ (println shared-outputs)
+          shared-results (.up shared-stack #js {:onOutput println})
+          shared-outputs (.outputs shared-stack)
+          _ (println shared-outputs)
 
-              _ (p/delay 2000)
-          ;;   prepare-stack (.createOrSelectStack pulumi-auto/LocalWorkspace
-          ;;                                       prepare-deployment-stack)
-          ;;  _ (config-core prepare-stack kubeconfig vault-token vault-address)
+          _ (p/delay 2000)
+          prepare-stack (.createOrSelectStack pulumi-auto/LocalWorkspace
+                                              prepare-deployment-stack)
+          _ (config-core prepare-stack kubeconfig vault-token vault-address)
 
-          ;;  prepare-results (.up prepare-stack #js {:onOutput println})
-          ;; prepare-outputs (.outputs prepare-stack)
-          ;; _ (println prepare-outputs)
+          prepare-results (.up prepare-stack #js {:onOutput println})
+          prepare-outputs (.outputs prepare-stack)
+          _ (println prepare-outputs)
 
-          ;;_ (p/delay 3000)
+          _ (p/delay 3000)
 
-          ;;           app-stack  (.createOrSelectStack pulumi-auto/LocalWorkspace
-          ;;                                        deployment-stack)
+          app-stack  (.createOrSelectStack pulumi-auto/LocalWorkspace
+                                           deployment-stack)
 
-          ;;     _ (config-core app-stack kubeconfig vault-token vault-address)
+          _ (config-core app-stack kubeconfig vault-token vault-address)
 
-          ;;        app-result (.up app-stack #js {:onOutput println})
+          app-result (.up app-stack #js {:onOutput println})
 
-          ;;           app-outputs (.outputs app-stack)
-          ;;       _ (println app-outputs)
-          _ (.kill port-forward)
-          ]
+          app-outputs (.outputs app-stack)
+          _ (println app-outputs)
+          _ (.kill port-forward)]
     "All stacks deployed and cleaned up successfully."))
 
 
