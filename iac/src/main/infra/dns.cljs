@@ -1,10 +1,6 @@
 (ns infra.dns
   (:require
    [clojure.string :as str]
-   [utils.vault :as utils]
-   ["@pulumi/pulumi" :as pulumi]
-   ["@pulumi/kubernetes" :as k8s]
-   ["@pulumi/vault" :as vault]
    ["@pulumi/cloudflare" :as cloudflare]
    ["@pulumi/command/local" :as local]))
 
@@ -18,52 +14,45 @@
 (defn- get-node-ips [] 
   (str "kubectl get nodes -o jsonpath='{range .items[*]}{.status.addresses[?(@.type==\"ExternalIP\")].address}{\"\\n\"}{end}'"))
 
-(defn setup-dns [env]
-  (let [
-        {:keys [pulumi-cfg dns-secrets]} env
-        get-node-ips (local/Command.
+(defn setup-dns [{:keys [pulumi-cfg secrets]}]
+  (let [get-node-ips (local/Command.
                       "get-node-ips"
                       (clj->js {:create (get-node-ips)
                                 :environment {:KUBECONFIG "./kubeconfig.yaml"}}))
         token (.requireSecret pulumi-cfg "apiToken")
         cloudflare-provider (new cloudflare/Provider "cloudflare-provider"
                                  (clj->js {:apiToken token}))
-        node-ips-output (.-stdout get-node-ips)
-        _ (js/console.log env)
-        ]
+        node-ips-output (.-stdout get-node-ips)]
 
 
     (.apply node-ips-output
-                  (fn [command-output]
-                    (let [node-ips (-> command-output
-                                       str/split-lines
-                                       (->> (map #(first (str/split % #" ")))
-                                            (filter seq)))
-                          ]
-                      (.apply dns-secrets
-                             (fn [secret-data]
-                               (let [hostname-to-zone (-> (.-data secret-data)
-                                                          (js->clj :keywordize-keys true))
-                                     _ (println "Ass ass")]
-                                 (vec
-                                  (for [[hostname zone-id] hostname-to-zone
-                                        [index ip] (map-indexed vector node-ips)
-                                        :when (and hostname zone-id ip)]
-                                    (new cloudflare/DnsRecord
-                                         (str "dns-" (name hostname) "-node-" index)
-                                         (clj->js {:zoneId zone-id
-                                                   :name hostname
-                                                   :content ip
-                                                   :type (get-record-type ip)
-                                                   :ttl 300})
-                                         (clj->js {:provider cloudflare-provider}))))))))))))
+            (fn [command-output]
+              (let [node-ips (-> command-output
+                                 str/split-lines
+                                 (->> (map #(first (str/split % #" ")))
+                                      (filter seq)))]
+                (.apply secrets
+                        (fn [secret-data]
+                          (let [hostname-to-zone (-> (.-data secret-data)
+                                                     (js->clj :keywordize-keys true))]
+                            (vec
+                             (for [[hostname zone-id] hostname-to-zone
+                                   [index ip] (map-indexed vector node-ips)
+                                   :when (and hostname zone-id ip)]
+                               (new cloudflare/DnsRecord
+                                    (str "dns-" (name hostname) "-node-" index)
+                                    (clj->js {:zoneId zone-id
+                                              :name hostname
+                                              :content ip
+                                              :type (get-record-type ip)
+                                              :ttl 300
+                                              :proxied true})
+                                    (clj->js {:provider cloudflare-provider}))))))))))))
 
 (def config
-  {:stack [:vault:prepare :k8s:secret :generic:execute]
+  {:stack [:vault:prepare :generic:execute]
    :app-name "dns"
-   :app-namespace "dns"
-   :exec-fn setup-dns
-   :vault:prepare-opts {:app-name "dns"
-                         :app-namespace "dns"}})
+   :no-namespace true
+   :exec-fn setup-dns})
 
 
