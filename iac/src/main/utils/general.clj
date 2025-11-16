@@ -73,7 +73,8 @@
                  `(p-chain ~acc #(~form %))
 
                  (list? form)
-                 `(p-chain ~acc (fn [val#] (~@form val#)))
+                 `(p-chain ~acc ~form)
+                 
 
                  :else
                  (throw (ex-info "Unsupported form in p->" {:form form}))))]
