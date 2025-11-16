@@ -47,15 +47,10 @@
   (base/mod-quick-deploy
      shared-service-registry
      (fn [init]
-         (let [app-outputs (get init :setup)]
-         {}
-           #_{:url (.apply app-outputs
-                         (fn [%]
-                           (let [host-output (-> % .-harbor (aget "vault-secrets") .-secrets .-host)]
-                             (.apply host-output #(str "https://" %)))))
-
-            :username (.apply app-outputs #(-> % .-harbor (aget "vault-secrets") .-secrets .-username))
-            :password (.apply app-outputs #(-> % .-harbor (aget "vault-secrets") .-secrets .-password))}))))
+       (let [secrets (p-> init .-harbor "vault:prepare" "stringData")]
+         {:url (p-> secrets .-host #(str "https://" %))
+          :username (p-> secrets .-username)
+          :password (p-> secrets .-password)}))))
 
 
 
