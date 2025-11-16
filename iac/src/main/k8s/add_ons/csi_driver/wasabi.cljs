@@ -2,11 +2,11 @@
   (:require [configs :refer [cfg]]))
 
 (def config
-  {:stack [:secret :chart]
+  {:stack [:k8s:secret :k8s:chart]
    :app-namespace "kube-system"
    :no-namespace true
    :app-name      "wasabi-csi"
-   :chart-opts {:chart "csi-s3"
+   :k8s:chart-opts {:chart "csi-s3"
                 :fetchOpts {:repo "https://yandex-cloud.github.io/k8s-csi-s3/charts"}
                 :values {:controller {:enabled false
                                                         :existingSecret {:name "wasabi-csi-secrets"}
@@ -20,7 +20,7 @@
                                                          :secretAccessKey "something"
                                                          ;;:bucket "pulumi-harbor"
                                                          }}
-   :secret-opts {:stringData {:accessKeyID (-> cfg :wasabiId)
+   :k8s:secret-opts {:stringData {:accessKeyID (-> cfg :wasabiId)
                              :secretAccessKey (-> cfg :wasabiKey)
                              :endpoint "http://wasabi-proxy.wasabi-proxy.svc.cluster.local"}}
   :vault-load-yaml false})
