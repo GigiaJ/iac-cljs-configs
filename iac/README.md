@@ -5,7 +5,63 @@ I'll try to include any pertinent documentation here in the tooling I use or the
 
 
 #### Upcoming
-Break this into three repos. IaC, the Pulumi CLJS library, and my dot files. We'll also be moving data from our old instances to the new IaC managed cluster. c: End goals.
+Break this into three repos. IaC, the Pulumi CLJS library, and my dot files. We'll also be moving data from our old instances to the new IaC managed cluster. c:
+Current roadmap for that is breaking apart the Vault provider into its actual core components as it is currently an anti-pattern in the way it combines multiple provider functionalities through it. It relying on the config file even is a bit of an issue.
+Furthermore, we are unable to effectively destructure secrets in the execute function in the current design. However, since we'd want to change to remove the anti-pattern mentioned above, we'd ideally actually just reference secrets through the vault resource output from the given resource config's stack execution.
+
+get-provider-outputs-config inside utils.providers.cljs currently runs under the expectation that shared stack already exists... which inherently is flawed on an initial run. Will need to revise a little. Similarly get-stack-refs works on the same flawed principle.
+Maybe we can move them to stack definitions (which currently exist in base.cljs). I think in an ideal design we could actually inherently scope the entire thing out. I'm inspired by how Guix allows system definitions to be written, and there isn't anything stopping a large block for a stack being like:
+```
+(def some-stack
+{:stack-registry
+ [{:stack [:k8s:secret :k8s:chart]
+   :app-namespace "kube-system"
+   :app-name "hcloud-csi"
+   :vault-load-yaml false
+   :k8s:secret-opts {:metadata {:name "hcloud"
+                            :namespace "kube-system"}
+                 :stringData {:token  (-> cfg :hcloudToken)}}
+   :k8s:chart-opts {:fetchOpts {:repo "https://charts.hetzner.cloud"}
+                :values {:controller {:enabled false
+                                      :existingSecret {:name "hcloud-csi-secret"}
+                                      :node {:existingSecret {:name "hcloud-csi-secret"}}}}}}
+    {:stack [:vault:prepare :docker:image :k8s:secret :k8s:chart]
+   :app-namespace "caddy-system"
+   :app-name      "caddy-ingress-controller"
+   :k8s:image-port 8080
+   :k8s:vault-load-yaml false
+   :k8s:image-opts {:imageName '(str repo "/" app-name ":latest")}
+   :docker:image-opts {:registry {:server (-> cfg :public-image-registry-url)
+                                  :username (-> cfg :public-image-registry-username)
+                                  :password (-> cfg :public-image-registry-password)}
+                       :tags [(str (-> cfg :public-image-registry-url) "/" (-> cfg :public-image-registry-username) "/" "caddy")]
+                       :push true}
+   :k8s:chart-opts {:fetchOpts {:repo "https://caddyserver.github.io/ingress"}
+                    :values
+                    {:ingressController
+                     {:deployment {:kind "DaemonSet"}
+                      :daemonSet {:useHostPort true}
+                      :ports {:web {:hostPort 80}
+                              :websecure {:hostPort 443}}
+                      :service {:type "NodePort"
+                                :externalTrafficPolicy "Local"}
+                      :image {:repository 'repo
+                              :tag "latest"}
+                      :config {:email 'email}}}}}
+    ]
+    :stack-references { :init (new pulumi/StackReference "init") 
+                        :shared (new pulumi/StackReference "shared")}
+    :provider-configs {:harbor {:stack :shared
+                :outputs ["username" "password" "url"]}}
+    })
+```
+and that effectively defines an entire stack and is executable on (with the option to scope out to files to reduce the sheer verbosity in a single)
+In that regard, I think we've made decent headway in achieving a similar design and behavior where a config should provide reproducible results.
+Due to the nature of npm packages, it is a bit hard to *lock* to certain package versions as easily.
+
+DNS should be swapped with a Cloudflare provider instead and more appropriately allow EACH service to plainly define a DNS entry.
+
+Local config loading or something should also be a provider, as obviously we would want to be able to pass through virtually anything to a service. That way they can be accessed later (this would replace the weird load-yaml that is a leftover from prior iterations)
 
 #### Goals
 The long term goal is for this to be a mostly uninteractive, to completion set up of my cloud services. Since it'll be IaC should I ever choose down the road to migrate certain ones to local nodes I run then that effort should also be more or less feasible.
