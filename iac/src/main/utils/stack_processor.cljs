@@ -128,6 +128,10 @@
    :k8s:secret {:constructor (.. k8s -core -v1 -Secret)
                 :provider-key :k8s
                 :defaults-fn (fn [env] ((get-in default/defaults [:k8s :secret]) (:options env)))}
+   
+   :k8s:config-map {:constructor (.. k8s -core -v1 -ConfigMap)
+                    :provider-key :k8s
+                    :defaults-fn (fn [env] ((get-in default/defaults [:k8s :config-map]) (:options env)))}
 
    :k8s:deployment {:constructor (.. k8s -apps -v1 -Deployment)
                     :provider-key :k8s
@@ -143,10 +147,13 @@
 
    :k8s:chart {:constructor (.. k8s -helm -v3 -Chart)
                :provider-key :k8s
-               :defaults-fn (fn [env]
+               :defaults-fn (fn [env] 
                               (deep-merge ((get-in default/defaults [:k8s :chart]) (:options env))
                                           (update-in (get-in (:options env) [:k8s:chart-opts]) [:values]
                                                      #(deep-merge % (or (:yaml-values (:options env)) {})))))}
+   :k8s:storage-class {:constructor (.. k8s -storage -v1 -StorageClass)
+                   :provider-key :k8s
+                   :defaults-fn (fn [env] ((get-in default/defaults [:k8s :storage-class]) (:options env)))}
 
    ;; Docker Resources
    :docker:image {:constructor (.. docker-build -Image)
@@ -157,6 +164,7 @@
    :harbor:project {:constructor (.. harbor -Project)
                     :provider-key :harbor
                     :defaults-fn (fn [env] ((get-in default/defaults [:harbor :project]) (:options env)))}
+   
    :harbor:robot-account {:constructor (.. harbor -RobotAccount)
                           :provider-key :harbor
                           :defaults-fn (fn [env] ((get-in default/defaults [:harbor :robot-account]) (:options env)))}})
