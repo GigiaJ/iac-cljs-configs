@@ -1,10 +1,10 @@
 (ns k8s.services.mesite.service)
 
 (def config
-  {:stack [:vault-secrets:prepare
+  {:stack [:vault:prepare
            :harbor:robot-account
            :docker:image
-           [-> :k8s :namespace :deployment :service :ingress]]
+           [:k8s :namespace :deployment :service :ingress]]
    :app-name "mesite"
    :docker:image-opts {:context {:location "https://codeberg.org/Gigia/mesite.git"}
                        :registry {:server 'repo
