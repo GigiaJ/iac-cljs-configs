@@ -22,11 +22,9 @@
 
 (def base-service-registry [init/config hetzner-csi/config openbao/config ])
 
-(def shared-service-registry [#_minio/config dns/config #_caddy/config 
-                              #_wasabi-csi/config #_proxy/config #_s3proxy/config #_harbor/config
-                              #_secret-replicator/config])
+(def shared-service-registry [dns/config caddy/config
+                              wasabi-csi/config proxy/config secret-replicator/config harbor/config])
 
-;; Need to move buildkit to base later
 (def prepare-service-registry [harbor-prepare/config])
 
 (def deployment-matrix-service-registry [])
