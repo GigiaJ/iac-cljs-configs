@@ -180,10 +180,9 @@
           component-opts (get full-config opts-key)
           env            {:options full-config :secrets (:secrets full-config)}
           defaults       (when-let [defaults-fn (:defaults-fn spec)]
-                           (defaults-fn env))
-
+                           (defaults-fn env)) 
           resource-class (:constructor spec)]
-
+      
       (if resource-class
         (let [creator-fn (fn [final-args]
                            (new-resource resource-class
@@ -207,12 +206,14 @@
                   :app-namespace  (:app-namespace config)
                   :load-yaml      (get config :vault-load-yaml false)}
         final-args (merge defaults prepare-opts)
+        
         prepared-vault-data (try
                               (vault-utils/prepare final-args)
                               (catch js/Error e
                                 (js/console.error "!!! Error in :vault:prepare :" e)
                                 nil))]
-    {:common-opts-update prepared-vault-data}))
+    {:common-opts-update prepared-vault-data
+     :resource (:bind-secrets prepared-vault-data)}))
 
 (defmethod deploy-resource :vault:retrieve
   [_ config]
