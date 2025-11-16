@@ -30,18 +30,18 @@
               :name app-name}
    :data {}})
 
-(defn service [{:keys  [app-name app-namespace app-labels image-port]}]
+(defn service [{:keys  [app-name app-namespace image-port]}]
   {:metadata {:namespace app-namespace
               :name app-name}
-   :spec {:selector app-labels
+   :spec {:selector {:app app-name}
           :ports [{:port 80 :targetPort image-port}]}})
 
-(defn deployment [{:keys [app-name app-namespace app-labels image image-port]}]
+(defn deployment [{:keys [app-name app-namespace image image-port]}]
   {:metadata {:namespace app-namespace
               :name app-name}
-   :spec {:selector {:matchLabels app-labels}
+   :spec {:selector {:matchLabels {:app app-name}}
           :replicas 1
-          :template {:metadata {:labels app-labels}
+          :template {:metadata {:labels {:app app-name}}
                      :spec {:containers
                             [{:name app-name
                               :image image
@@ -68,11 +68,14 @@
    :secret        secret
    :storage-class storage-class})
 
+
 (def component-specs-defs
   {:root-sym 'k8s
    :provider-key :k8s
    :resources
-   {:namespace  {:path ['-core '-v1 '-Namespace]}
+   {:config-map {:path ['-core '-v1 '-ConfigMap]}
+    :storage-class {:path ['-core '-v1 '-StorageClass]}
+    :namespace  {:path ['-core '-v1 '-Namespace]}
     :secret     {:path ['-core '-v1 '-Secret]}
     :deployment {:path ['-apps '-v1 '-Deployment]}
     :service    {:path ['-core '-v1 '-Service]}
