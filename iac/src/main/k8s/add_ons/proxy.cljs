@@ -19,7 +19,7 @@
              "}"]))
 
 (def config
-  {:stack [:config-map :deployment :service]
+  {:stack [[:k8s :config-map :deployment :service]]
 
    :app-namespace "wasabi-proxy"
    :app-name      "wasabi-proxy"
@@ -27,14 +27,14 @@
    :image "docker.io/library/caddy:2"
    :vault-load-yaml false
 
-   :config-map-opts {:data {:Caddyfile wasabi-proxy-caddyfile}}
+   :k8s:config-map-opts {:data {:Caddyfile wasabi-proxy-caddyfile}}
 
-   :deployment-opts
+   :k8s:deployment-opts
    {:spec
     {:template
      {:spec
       {:containers
-       [{:name "wasabi-proxy"
+       [{:name 'app-name
          :image "docker.io/library/caddy:2"
          :ports [{:containerPort 80}]
          :volumeMounts
@@ -46,12 +46,12 @@
 
        :volumes
        [{:name "caddyfile-config"
-         :configMap {:name "wasabi-proxy"}}
+         :configMap {:name 'app-name}}
         {:name "caddy-data"
          :emptyDir {}}]
        :nodeSelector {"node-role.kubernetes.io/master" "true"}}}}}
 
-   :service-opts
+   :k8s:service-opts
    {:spec
     {:ports
      [{:port 80
