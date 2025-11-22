@@ -5,13 +5,15 @@
    ["path" :as path]
    [configs :refer [cfg]]))
 
-(defn image [{:keys [app-name]}]
-  (let [context-path (.. path (join "." (-> cfg :resource-path)))
+(defn image [env]
+  (let [{:keys [app-name docker:image-opts]} env
+        context-path (.. path (join "." (-> cfg :resource-path)))
         dockerfile-path (.. path (join context-path (str app-name ".dockerfile")))
-        base-args {:context {:location context-path}
-                   :dockerfile {:location dockerfile-path}
-                   :imageName (str (-> cfg :docker-repo) "/" app-name ":latest")
-                   }]
+        base-args (if (:is-local docker:image-opts)
+                    {:context {:location context-path}
+                     :dockerfile {:location dockerfile-path}
+                     :imageName (str (-> cfg :docker-repo) "/" app-name ":latest")}
+                    {})]
     base-args))
 
 (def defaults
