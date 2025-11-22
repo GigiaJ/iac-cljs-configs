@@ -23,13 +23,21 @@
   {:vault  {:stack :init
             :outputs ["vaultAddress" "vaultToken"]}
    :harbor {:stack :shared
-                :outputs ["username" "password" "url"]}
+            :outputs ["username" "password" "url"]}
    :k8s   {:stack :init
            :outputs ["kubeconfig"]}})
 
-(defn get-stack-refs []
+
+#_(defn get-stack-refs []
   {:init (new pulumi/StackReference "init") 
    :shared (new pulumi/StackReference "shared")})
+
+(defn get-stack-refs [stack-ref-array]
+  (into {}
+        (map (fn [stack-name]
+               [(keyword stack-name)
+                (new pulumi/StackReference stack-name)])
+             stack-ref-array)))
 
 (defn extract-expanded-keywords [stack]
   (let [expand-chain
@@ -50,8 +58,8 @@
 
 
 
-(defn get-all-providers [service-registry]
-  (->> service-registry
+(defn get-all-providers [resource-configs]
+  (->> resource-configs
        (mapcat (comp extract-expanded-keywords :stack))
 
        (map (fn [component-key]
@@ -69,11 +77,13 @@
   {:k8s k8s-utils/pre-deploy-rule})
 
 
-(defn provider-apply [service-registry pulumi-cfg]
-  (let [providers-needed (get-all-providers service-registry)
-        provider-outputs-config (get-provider-outputs-config)
-        stack-refs (get-stack-refs)
+(defn provider-apply [stack-resources-definition pulumi-cfg]
+  (let [providers-needed (get-all-providers (:resource-configs stack-resources-definition))
+        provider-outputs-config (:provider-external-inputs stack-resources-definition)
+        stack-refs (get-stack-refs (:stack-references stack-resources-definition))
         needed-output-configs (select-keys provider-outputs-config providers-needed)
+        ;; At some point we should add the ability for Providers to be passed Pulumi configs or our config map?
+        ;; Cloudflare and others may require or request a token.
         outputs-to-fetch (reduce-kv
                           (fn [acc _provider-key data]
                             (let [stack-key (:stack data)
@@ -111,7 +121,7 @@
                        (reduce-kv
                         (fn [acc provider-key provider-instance]
                           (if-let [rule-fn (get provider-rules provider-key)]
-                            (let [rule-results (rule-fn {:service-registry service-registry
+                            (let [rule-results (rule-fn {:resource-configs (:resource-configs stack-resources-definition)
                                                          :provider provider-instance})]
                               (assoc acc provider-key rule-results))
                             acc))
@@ -120,6 +130,6 @@
                    (resolve
                     (deploy!
                      {:pulumi-cfg pulumi-cfg
-                      :service-registry service-registry
+                      :resource-configs (:resource-configs stack-resources-definition)
                       :all-providers instantiated-providers
                       :pre-deploy-deps pre-deploy-results})))))))))
