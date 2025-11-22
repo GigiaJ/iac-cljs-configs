@@ -8,7 +8,7 @@
    ["@pulumiverse/harbor" :as harbor]
    [utils.defaults :as default]
    [utils.vault :as vault-utils]
-   [utils.general :refer [deep-merge new-resource create-expander resource-factory deploy-stack-factory iterate-stack]]
+   [utils.general :refer [deep-merge new-resource resource-factory deploy-stack-factory iterate-stack]]
    ["@pulumi/docker" :as docker]
    ["@pulumi/docker-build" :as docker-build]
    [clojure.walk :as walk]
