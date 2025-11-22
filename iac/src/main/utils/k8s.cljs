@@ -2,17 +2,69 @@
 
 
 
+(defn cluster-issuer [{:keys [host is-prod?]}]
+  {:metadata {:name (if is-prod? "letsencrypt-prod" "letsencrypt-staging")}
+   :spec {:acme {:email "admin@example.com"
+                 :server (if is-prod? "https://acme-v02.api.letsencrypt.org/directory" "https://acme-staging-v02.api.letsencrypt.org/directory")
+                 :privateKeySecretRef {:name (if is-prod? "account-key-prod" "account-key-staging")}
+                 :solvers [{:dns01 {:cloudflare {:apiTokenSecretRef
+                                                 {:name "api-token-secret"
+                                                  :key "apiToken"}}}
+                            :selector {:dnsZones [(or host "example.com")]}}]}}})
+
+(defn certificate
+  [{:keys [app-name app-namespace host is-prod?]}]
+  (let [secret-name (str app-name "-cert")
+        domain (or host (str app-name ".example.com"))
+        issuer-name (if is-prod?
+                      "letsencrypt-prod"
+                      "letsencrypt-staging")]
+
+    {:apiVersion "cert-manager.io/v1"
+     :kind "Certificate"
+     :metadata {:name (str app-name "-cert")
+                :namespace app-namespace}
+     :spec {:secretName secret-name
+            :issuerRef {:name issuer-name
+                        :kind "ClusterIssuer"}
+            :dnsNames [domain]}}))
 
 
-(defn ingress [{:keys [app-name app-namespace host ingress-opts]}]
+(defn gateway
+  [{:keys [app-name]}]
+  {:apiVersion "gateway.networking.k8s.io/v1"
+   :kind "Gateway"
+   :metadata {:name "main-gateway"
+              :namespace "traefik"}
+   :spec {:gatewayClassName "traefik"
+          :listeners
+          [{:name "http"
+            :protocol "HTTP"
+            :port 80}
+           {:name "https"
+            :protocol "HTTPS"
+            :port 443
+            :tls {:certificateRefs
+                  [{:name (str app-name "-cert")
+                    :kind "Secret"}]}}]}})
+
+
+(defn httproute [{:keys [app-name app-namespace host]}]
+  {:apiVersion "gateway.networking.k8s.io/v1"
+   :kind "HTTPRoute"
+   :metadata {:name (str app-name "-route")
+              :namespace app-namespace}
+   :spec {:parentRefs [{:name "main-gateway"
+                        :namespace "traefik"}]
+          :hostnames [host]
+          :rules [{:matches [{:path {:type "PathPrefix"
+                                     :value "/"}}]
+                   :backendRefs [{:name app-name
+                                  :port 80}]}]}})
+
+(defn ingress [{:keys [app-name app-namespace host]}]
   {:metadata {:name app-name
-              :namespace app-namespace
-              :annotations {"caddy.ingress.kubernetes.io/tls.issuer" "cloudflare"
-                            "caddy.ingress.kubernetes.io/tls.dns_provider" "cloudflare"
-                            "caddy.ingress.kubernetes.io/tls.dns_provider.credentials_secret" "caddy-ingress-controller-secrets"
-                            "caddy.ingress.kubernetes.io/tls.dns_provider.credentials_secret_namespace" "caddy-system"
-                            "caddy.ingress.kubernetes.io/tls.issuer.acme_ca" "https://acme-v02.api.letsencrypt.org/directory"
-                            "caddy.ingress.kubernetes.io/snippet" (:caddy-snippet ingress-opts)}}
+              :namespace app-namespace}
    :spec {:ingressClassName "caddy"
           :rules [{:host host
                    :http {:paths [{:path "/"
@@ -60,6 +112,10 @@
 
 (def defaults
   {:ingress       ingress
+   :gateway      gateway
+   :httproute    httproute
+   :certificate certificate
+   :cluster-issuer cluster-issuer
    :chart         chart
    :config-map    config-map
    :service       service
@@ -88,45 +144,45 @@
                                            #(deep-merge % (or (:yaml-values (:options env)) {})))))}}})
 
 #_(def component-specs
-  :k8s:namespace {:constructor (.. k8s -core -v1 -Namespace)
+    :k8s:namespace {:constructor (.. k8s -core -v1 -Namespace)
+                    :provider-key :k8s
+                    :defaults-fn (fn [env] (defaults/namespace (:options env)))}
+
+    :k8s:secret {:constructor (.. k8s -core -v1 -Secret)
+                 :provider-key :k8s
+                 :defaults-fn (fn [env] (default/secret (:options env)))}
+
+    :k8s:deployment {:constructor (.. k8s -apps -v1 -Deployment)
+                     :provider-key :k8s
+                     :defaults-fn (fn [env] (default/deployment (:options env)))}
+
+    :k8s:service {:constructor (.. k8s -core -v1 -Service)
                   :provider-key :k8s
-                  :defaults-fn (fn [env] (defaults/namespace (:options env)))}
-  
-  :k8s:secret {:constructor (.. k8s -core -v1 -Secret)
-               :provider-key :k8s
-               :defaults-fn (fn [env] (default/secret (:options env)))}
-  
-  :k8s:deployment {:constructor (.. k8s -apps -v1 -Deployment)
-                   :provider-key :k8s
-                   :defaults-fn (fn [env] (default/deployment (:options env)))}
-  
-  :k8s:service {:constructor (.. k8s -core -v1 -Service)
+                  :defaults-fn (fn [env] (default/service (:options env)))}
+
+    :k8s:ingress {:constructor (.. k8s -networking -v1 -Ingress)
+                  :provider-key :k8s
+                  :defaults-fn (fn [env] (default/ingress (:options env)))}
+
+    :k8s:chart {:constructor (.. k8s -helm -v3 -Chart)
                 :provider-key :k8s
-                :defaults-fn (fn [env] (default/service (:options env)))}
-  
-  :k8s:ingress {:constructor (.. k8s -networking -v1 -Ingress)
-                :provider-key :k8s
-                :defaults-fn (fn [env] (default/ingress (:options env)))}
-  
-  :k8s:chart {:constructor (.. k8s -helm -v3 -Chart)
-              :provider-key :k8s
-              :defaults-fn (fn [env]
-                             (deep-merge (default/chart (:options env))
-                                         (update-in (get-in (:options env) [:k8s:chart-opts]) [:values]
-                                                    #(deep-merge % (or (:yaml-values (:options env)) {})))))})
+                :defaults-fn (fn [env]
+                               (deep-merge (default/chart (:options env))
+                                           (update-in (get-in (:options env) [:k8s:chart-opts]) [:values]
+                                                      #(deep-merge % (or (:yaml-values (:options env)) {})))))})
 
 (def provider-template
- {:constructor (.. k8s -Provider)
-  :name "k8s-provider"
-  :config {:kubeconfig 'kubeconfig}})
+  {:constructor (.. k8s -Provider)
+   :name "k8s-provider"
+   :config {:kubeconfig 'kubeconfig}})
 
 
 (defn pre-deploy-rule
   "k8s pre-deploy rule: scans the service registry and creates
    all unique namespaces. Returns a map of created namespaces
    keyed by their name."
-  [{:keys [service-registry provider]}]
-  (let [namespaces (->> service-registry
+  [{:keys [resource-configs provider]}]
+  (let [namespaces (->> resource-configs
                         (remove #(contains? % :no-namespace))
                         (map :app-namespace)
                         (remove nil?)
