@@ -14,7 +14,7 @@
 (defn- get-node-ips [] 
   (str "kubectl get nodes -o jsonpath='{range .items[*]}{.status.addresses[?(@.type==\"ExternalIP\")].address}{\"\\n\"}{end}'"))
 
-(defn setup-dns [{:keys [pulumi-cfg secrets]}]
+(defn setup-dns [{:keys [pulumi-cfg secrets dependencies]}]
   (let [get-node-ips (local/Command.
                       "get-node-ips"
                       (clj->js {:create (get-node-ips)
@@ -33,21 +33,23 @@
                                       (filter seq)))]
                 (.apply secrets
                         (fn [secret-data]
-                          (let [hostname-to-zone (-> (.-data secret-data)
-                                                     (js->clj :keywordize-keys true))]
+                          (let [hostname-to-zone (js->clj  secret-data :keywordize-keys true)]
                             (vec
                              (for [[hostname zone-id] hostname-to-zone
                                    [index ip] (map-indexed vector node-ips)
                                    :when (and hostname zone-id ip)]
-                               (new cloudflare/DnsRecord
-                                    (str "dns-" (name hostname) "-node-" index)
-                                    (clj->js {:zoneId zone-id
-                                              :name hostname
-                                              :content ip
-                                              :type (get-record-type ip)
-                                              :ttl 300
-                                              :proxied true})
-                                    (clj->js {:provider cloudflare-provider}))))))))))))
+
+                       
+                                 (new cloudflare/DnsRecord
+                                      (str "dns-" (name hostname) "-node-" index)
+                                      (clj->js {:zoneId zone-id
+                                                :name hostname
+                                                :content ip
+                                                :type (get-record-type ip)
+                                                :ttl 1
+                                                :proxied true})
+                                      (clj->js {:provider cloudflare-provider})
+                                      (clj->js {:dependsOn dependencies}))))))))))))
 
 (def config
   {:stack [:vault:prepare :generic:execute]
