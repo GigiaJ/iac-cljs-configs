@@ -1,12 +1,14 @@
 (ns utils.stack-processor
   (:require
    ["@pulumi/kubernetes" :as k8s]
+   ["@local/crds/gateway" :as gateway-api]
+   ["@local/crds/cert_manager" :as cert-manager]
    ["@pulumi/pulumi" :as pulumi]
    ["@pulumi/vault" :as vault]
    ["@pulumiverse/harbor" :as harbor]
    [utils.defaults :as default]
    [utils.vault :as vault-utils]
-   [utils.general :refer [deep-merge new-resource  component-factory resource-factory deploy-stack-factory iterate-stack]]
+   [utils.general :refer [deep-merge new-resource create-expander resource-factory deploy-stack-factory iterate-stack]]
    ["@pulumi/docker" :as docker]
    ["@pulumi/docker-build" :as docker-build]
    [clojure.walk :as walk]
@@ -15,8 +17,9 @@
    [configs :refer [cfg]]
    [utils.k8s :as k8s-utils]
    [utils.harbor :as harbor-utils]
-   [utils.docker :as docker-utils])
-  (:require-macros [utils.general :refer [build-registry]]))
+   [utils.docker :as docker-utils]
+   [utils.safe-fns :refer [safe-fns]])
+  (:require-macros [utils.general :refer [p-> build-registry]]))
 
 
 #_(def component-specs-defs
@@ -26,15 +29,32 @@
 
 #_(def component-specs (build-registry component-specs-defs))
 
-(defn make-paths [& path-groups]
-  (mapcat (fn [{:keys [paths backend]}]
-            (mapv (fn [p]
-                    {:path p
-                     :pathType "Prefix"
-                     :backend {:service backend}})
-                  paths))
-          path-groups))
 
+;; We should move this to a list of safe-fns that extend the below inherently. That way we don't bloat this file.
+(defn make-listeners [domains-or-json]
+  (let [domains (if (string? domains-or-json)
+                  (js->clj (js/JSON.parse domains-or-json))
+                  domains-or-json)]
+    (vec
+     (mapcat
+      (fn [domain]
+        (let [clean-name (clojure.string/replace domain #"\." "-")
+              secret-name (str clean-name "-tls")]
+
+          [{:name (str "https-root-" clean-name)
+            :port 443
+            :protocol "HTTPS"
+            :hostname domain
+            :tls {:mode "Terminate"
+                  :certificateRefs [{:name secret-name}]}}
+
+           {:name (str "https-wild-" clean-name)
+            :port 443
+            :protocol "HTTPS"
+            :hostname (str "*." domain)
+            :tls {:mode "Terminate"
+                  :certificateRefs [{:name secret-name}]}}]))
+      domains))))
 
 (defn safe-parse-int [s]
   (let [n (js/parseInt s 10)]
@@ -49,12 +69,6 @@
     (safe-parse-int v)
     v))
 
-;; Whitelist functions for resolving templates. Intended to be extended.
-(def ^:private safe-fns
-  {'str str
-   'b64e (fn [s] (-> (.from js/Buffer s) (.toString "base64")))
-   'println #(js/console.log %)
-   'make-paths make-paths})
 
 (defn- is-output? [x] (some? (.-__pulumiOutput x)))
 
@@ -128,7 +142,7 @@
    :k8s:secret {:constructor (.. k8s -core -v1 -Secret)
                 :provider-key :k8s
                 :defaults-fn (fn [env] ((get-in default/defaults [:k8s :secret]) (:options env)))}
-   
+
    :k8s:config-map {:constructor (.. k8s -core -v1 -ConfigMap)
                     :provider-key :k8s
                     :defaults-fn (fn [env] ((get-in default/defaults [:k8s :config-map]) (:options env)))}
@@ -147,13 +161,46 @@
 
    :k8s:chart {:constructor (.. k8s -helm -v3 -Chart)
                :provider-key :k8s
-               :defaults-fn (fn [env] 
+               :defaults-fn (fn [env]
                               (deep-merge ((get-in default/defaults [:k8s :chart]) (:options env))
                                           (update-in (get-in (:options env) [:k8s:chart-opts]) [:values]
                                                      #(deep-merge % (or (:yaml-values (:options env)) {})))))}
    :k8s:storage-class {:constructor (.. k8s -storage -v1 -StorageClass)
+                       :provider-key :k8s
+                       :defaults-fn (fn [env] ((get-in default/defaults [:k8s :storage-class]) (:options env)))}
+
+   :k8s:gateway {:constructor (.. gateway-api -v1 -Gateway)
+                 :provider-key :k8s
+                 :defaults-fn (fn [env] ((get-in default/defaults [:k8s :gateway]) (:options env)))}
+
+   :k8s:httproute {:constructor (.. gateway-api -v1 -HTTPRoute)
                    :provider-key :k8s
-                   :defaults-fn (fn [env] ((get-in default/defaults [:k8s :storage-class]) (:options env)))}
+                   :defaults-fn (fn [env] ((get-in default/defaults [:k8s :httproute]) (:options env)))}
+
+   :k8s:cluster-issuer {:constructor (.. cert-manager -v1 -ClusterIssuer)
+                        :provider-key :k8s
+                        :defaults-fn (fn [env] ((get-in default/defaults [:k8s :cluster-issuer]) (:options env)))}
+
+   :k8s:certificates
+   {:constructor (.. cert-manager -v1 -Certificate)
+    :provider-key :k8s
+    :defaults-fn (fn [env]
+                   (let [{:keys [app-namespace is-prod?]} (:options env)]
+                    (p-> env :options :vault:prepare "stringData" .-domains
+                         #(vec
+                           (for [domain (js/JSON.parse %)] 
+                             (let [clean-name (clojure.string/replace domain #"\." "-")]
+                               {:_suffix clean-name
+                                :metadata {:namespace app-namespace}
+                                :spec {:dnsNames [domain (str "*." domain)]
+                                       :secretName (str clean-name "-tls")
+                                       :issuerRef {:name (if is-prod? "letsencrypt-prod" "letsencrypt-staging")
+                                                   :kind "ClusterIssuer"}}}))))))}
+
+   :k8s:certificate
+   {:constructor (.. cert-manager -v1 -Certificate)
+    :provider-key :k8s
+    :defaults-fn (fn [env] ((get-in default/defaults [:k8s :certificate]) (:options env)))}
 
    ;; Docker Resources
    :docker:image {:constructor (.. docker-build -Image)
@@ -164,7 +211,7 @@
    :harbor:project {:constructor (.. harbor -Project)
                     :provider-key :harbor
                     :defaults-fn (fn [env] ((get-in default/defaults [:harbor :project]) (:options env)))}
-   
+
    :harbor:robot-account {:constructor (.. harbor -RobotAccount)
                           :provider-key :harbor
                           :defaults-fn (fn [env] ((get-in default/defaults [:harbor :robot-account]) (:options env)))}})
@@ -176,31 +223,55 @@
   (fn [dispatch-key _config] dispatch-key))
 
 (defmethod deploy-resource :default
-  [dispatch-key
-   full-config]
+  [dispatch-key full-config]
 
   (if-let [spec (get component-specs dispatch-key)]
     (let [app-name       (:app-name full-config)
           dependsOn      (:dependsOn full-config)
           provider-key   (:provider-key spec)
           provider       (get full-config provider-key)
+          resource-class (:constructor spec)
           opts-key       (keyword (str (name dispatch-key) "-opts"))
           component-opts (get full-config opts-key)
-          env            {:options full-config :secrets (:secrets full-config)}
-          defaults       (when-let [defaults-fn (:defaults-fn spec)]
-                           (defaults-fn env)) 
-          resource-class (:constructor spec)]
-      
-      (if resource-class
-        (let [creator-fn (fn [final-args]
-                           (new-resource resource-class
-                                         app-name
-                                         final-args
-                                         provider
-                                         dependsOn))
-              resource (generic-transform creator-fn component-opts defaults (:secrets env) full-config)]
+          env            {:options full-config :secrets (:secrets full-config) :component-opts component-opts}
+          raw-defaults   (when-let [df (:defaults-fn spec)] (df env))]
 
-          {:resource resource})
+      (if resource-class
+        (let [base-creator (fn [final-args suffix]
+                             (let [final-name (if suffix
+                                                (str app-name "-" suffix)
+                                                app-name)]
+                               (new-resource resource-class
+                                             final-name
+                                             final-args
+                                             provider
+                                             dependsOn)))]
+
+          {:resource
+           (p-> raw-defaults
+                #(let [defaults-list (if (vector? %)
+                                       %
+                                       [%])
+                       is-multi?     (vector? %) resources
+                       (doall
+                        (map-indexed
+                         (fn [idx item]
+                           (let [suffix (cond
+                                          (:_suffix item) (:_suffix item)
+                                          is-multi? (str idx)
+                                          :else nil)
+                                 clean-item (dissoc item :_suffix)
+                                 item-creator (fn [resolved-args]
+                                                (base-creator resolved-args suffix))]
+
+                             (generic-transform item-creator
+                                                component-opts
+                                                clean-item
+                                                (:secrets env)
+                                                full-config)))
+                         defaults-list))]
+                   (if is-multi? resources (first resources))))})
+
         (throw (js/Error. (str "No :constructor found for spec: " dispatch-key)))))
 
     (throw (js/Error. (str "Unknown resource: " dispatch-key)))))
@@ -334,17 +405,17 @@
          stack-items)]
     (:resources-map result)))
 
-(defn deploy! [{:keys [pulumi-cfg service-registry all-providers]}]
+(defn deploy! [{:keys [pulumi-cfg resource-configs all-providers]}]
   (let [
 
         deployment-results
         (into
          {}
-         (for [config service-registry]
+         (for [config resource-configs]
            (let [
                  {:keys [stack app-name]} config
                  _ (when (nil? config)
-                     (throw (js/Error. "Service registry contains a nil value!")))
+                     (throw (js/Error. "Resource configs contain a nil value!")))
 
                  common-opts (merge
                               all-providers
