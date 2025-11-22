@@ -20,9 +20,9 @@
                      :stringData {".dockerconfigjson" '(str "{\"auths\":{\""
                                                             host
                                                             "\":{\"auth\":\""
-                                                            (b64e (str (-> :harbor:robot-account .-name) ":" (-> :harbor:robot-account .-secret)))
+                                                            (b64e (str (-> :harbor:robot-account .-fullName) ":" (-> :harbor:robot-account .-secret)))
                                                             "\"}}}")}}
-   :harbor:robot-opts {:name (str "kube" "-robot")
+   :harbor:robot-account-opts {:name '(str "kube-" app-name "-robot")
                        :namespace 'app-name
                        :level "project"
                        :permissions [{:kind "project"
