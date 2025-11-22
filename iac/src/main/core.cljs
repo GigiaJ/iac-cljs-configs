@@ -8,10 +8,15 @@
    [configs :refer [cfg]]))
 
 
+(def base-stack (clj->js  {:projectName "hetzner-k3s"
+                           :stackName "base"
+                           :workDir "/home/jaggar/dotfiles/iac"
+                           :program base/quick-deploy-base}))
+
 (def init-stack (clj->js  {:projectName "hetzner-k3s"
                            :stackName "init"
                            :workDir "/home/jaggar/dotfiles/iac"
-                           :program base/quick-deploy-base}))
+                           :program base/quick-deploy-init}))
 
 (def shared-platform-stack (clj->js  {:projectName "hetzner-k3s"
                                       :stackName "shared"
@@ -28,46 +33,30 @@
                                  :workDir "/home/jaggar/dotfiles/iac"
                                  :program base/quick-deploy-services}))
 
-(defn config-core [stack kubeconfig vault-token vault-address]
-  (p/do (.setConfig stack "hetzner-k3s:sshKeyName" #js {:value (-> cfg :sshKeyName) :secret false})
-        (.setConfig stack "hetzner-k3s:sshPersonalKeyName" #js {:value (-> cfg :sshPersonalKeyName) :secret false})
-        (.setConfig stack "hetzner-k3s:privateKeySsh" #js {:value (-> cfg :privateKeySsh) :secret true})
-        (.setConfig stack "kubeconfig" #js {:value kubeconfig :secret true})
-        (.setConfig stack "vault:token" #js {:value vault-token :secret true})
-        (.setConfig stack "hcloud:token" #js {:value (-> cfg :hcloudToken) :secret true})
-        (.setConfig stack "vault:address" #js {:value vault-address :secret true})
-        (.setConfig stack "hetzner-k3s:apiToken" #js {:value (-> cfg :apiToken) :secret true})))
+(defn deploy-stack
+  ([stack-definition configs]
+   (deploy-stack stack-definition configs 0))
+
+  ([stack-definition configs post-delay]
+   (p/let
+    [stack (.createOrSelectStack pulumi-auto/LocalWorkspace stack-definition)
+     _     (p/doseq [config configs]
+             (.setConfig stack (:name config)  (clj->js (dissoc config :name))))
+     _     (.up stack #js {:onOutput println})
+     outputs (.outputs stack)
+     _     (p/delay post-delay)]
+     outputs)))
 
 (defn run []
-
   (p/let [_ (println "Deploying cluster")
+          base-outputs (deploy-stack base-stack [{:name "hetzner-k3s:sshKeyName" :value (-> cfg :sshKeyName) :secret false}
+                                                 {:name "hetzner-k3s:sshPersonalKeyName" :value (-> cfg :sshPersonalKeyName) :secret false}
+                                                 {:name "hcloud:token" :value (-> cfg :hcloudToken) :secret true}
+                                                 {:name "hetzner-k3s:privateKeySsh" :value (-> cfg :privateKeySsh) :secret true}])
 
-          core-stack  (.createOrSelectStack pulumi-auto/LocalWorkspace
-                                            init-stack)
-          _ (.setConfig core-stack "hetzner-k3s:sshKeyName" #js {:value (-> cfg :sshKeyName) :secret false})
-          _ (.setConfig core-stack "hetzner-k3s:sshPersonalKeyName" #js {:value (-> cfg :sshPersonalKeyName) :secret false})
-          _ (.setConfig core-stack "hcloud:token" #js {:value (-> cfg :hcloudToken) :secret true})
-          _ (.setConfig core-stack "hetzner-k3s:privateKeySsh" #js {:value (-> cfg :privateKeySsh) :secret true})
-          core-result (.up core-stack #js {:onOutput println})
+          reused-configs [{:name "kubeconfig" :value (-> base-outputs (aget "kubeconfig") (.-value)) :secret true}]
 
-          ;; Checks for changes on the core and prevents deleting the app-stack needlessly.
-          ;; Important for the Openbao vault as it is deployed here and configured on the app-stack generally
-          ;;core-preview-result (.preview core-stack #js {:onOutput println})
-          ;;core-change-summary (js->clj (.-changeSummary core-preview-result) :keywordize-keys true)
-          #_core-result              #_(when (or (zero? (:delete core-change-summary 0))
-                                                 (pos? (:update core-change-summary 0))
-                                                 (pos? (:create core-change-summary 0)))
-                                         (.up core-stack #js {:onOutput println}))
-          core-outputs (.outputs core-stack)
-
-          vault-address (-> core-outputs (aget "vaultAddress") (.-value))
-          vault-token   (-> core-outputs (aget "vaultToken") (.-value))
-          kubeconfig    (-> core-outputs (aget "kubeconfig") (.-value))
-
-          _ (println core-outputs)
-
-
-          _ (p/delay 2000)
+          init-outputs (deploy-stack init-stack reused-configs 1000)
           port-forward (cp/spawn "kubectl"
                                  #js ["port-forward"
                                       "svc/openbao"
@@ -75,35 +64,15 @@
                                       "-n"
                                       "vault"])
 
-          _ (p/delay 3000)
+          reused-configs (conj reused-configs {:name "vault:token" :value (-> init-outputs (aget "vaultToken") (.-value)) :secret true})
+          reused-configs (conj reused-configs {:name "vault:address" :value (-> init-outputs (aget "vaultAddress") (.-value)) :secret true})
 
-          shared-stack (.createOrSelectStack pulumi-auto/LocalWorkspace shared-platform-stack)
-          _ (config-core shared-stack kubeconfig vault-token vault-address)
+          shared-outputs (deploy-stack shared-platform-stack 
+                                       (conj reused-configs {:name "hetzner-k3s:apiToken" :value (-> cfg :apiToken) :secret true})
+                                       1000)
+          prepare-outputs (deploy-stack prepare-deployment-stack reused-configs 3000)
+          deployment-outputs (deploy-stack deployment-stack reused-configs 2000)
 
-          shared-results (.up shared-stack #js {:onOutput println})
-          shared-outputs (.outputs shared-stack)
-          _ (println shared-outputs)
-
-          _ (p/delay 2000)
-          prepare-stack (.createOrSelectStack pulumi-auto/LocalWorkspace
-                                              prepare-deployment-stack)
-          _ (config-core prepare-stack kubeconfig vault-token vault-address)
-
-          prepare-results (.up prepare-stack #js {:onOutput println})
-          prepare-outputs (.outputs prepare-stack)
-          _ (println prepare-outputs)
-
-          _ (p/delay 3000)
-
-          app-stack  (.createOrSelectStack pulumi-auto/LocalWorkspace
-                                           deployment-stack)
-
-          _ (config-core app-stack kubeconfig vault-token vault-address)
-
-          app-result (.up app-stack #js {:onOutput println})
-
-          app-outputs (.outputs app-stack)
-          _ (println app-outputs)
           _ (.kill port-forward)]
     "All stacks deployed and cleaned up successfully."))
 
@@ -113,3 +82,23 @@
       (p/then #(println %))
       (p/catch #(println "An error occurred:" %))))
 
+;; Checks for changes on the core and prevents deleting the app-stack needlessly.
+          ;; Important for the Openbao vault as it is deployed here and configured on the app-stack generally
+          ;;core-preview-result (.preview core-stack #js {:onOutput println})
+          ;;core-change-summary (js->clj (.-changeSummary core-preview-result) :keywordize-keys true)
+          #_core-result              #_(when (or (zero? (:delete core-change-summary 0))
+                                                 (pos? (:update core-change-summary 0))
+                                                 (pos? (:create core-change-summary 0)))
+                                         (.up core-stack #js {:onOutput println}))
+
+(defn config-core [stack kubeconfig vault-token vault-address]
+  (p/do
+    ;;(.setConfig stack "hetzner-k3s:sshKeyName" #js {:value (-> cfg :sshKeyName) :secret false})
+    ;;(.setConfig stack "hetzner-k3s:sshPersonalKeyName" #js {:value (-> cfg :sshPersonalKeyName) :secret false})
+    ;;(.setConfig stack "hetzner-k3s:privateKeySsh" #js {:value (-> cfg :privateKeySsh) :secret true})
+    (.setConfig stack "kubeconfig" #js {:value kubeconfig :secret true})
+    (.setConfig stack "vault:token" #js {:value vault-token :secret true})
+    ;;(.setConfig stack "hcloud:token" #js {:value (-> cfg :hcloudToken) :secret true})
+    (.setConfig stack "vault:address" #js {:value vault-address :secret true})
+    ;;(.setConfig stack "hetzner-k3s:apiToken" #js {:value (-> cfg :apiToken) :secret true})
+    ))
