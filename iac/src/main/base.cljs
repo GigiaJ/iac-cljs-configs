@@ -7,7 +7,7 @@
    [utils.general :as general]
    [utils.providers :refer [provider-apply]]
    [infra.init :as infra]
-   [service-registries :refer [base-service-registry shared-service-registry prepare-service-registry deployment-service-registry]]
+   [service-registries :refer [base-resources-definition initialize-resources-definition shared-resources-definition preparation-resources-definition deployment-resources-definition]]
    )
      (:require-macros [utils.general :refer [p->]]))
   
@@ -17,9 +17,9 @@
         app-outputs (get init :setup)]
     #_(assoc exports :nextcloudUrl (.apply app-outputs #(get-in % [:nextcloud :nextcloud-url])))))
 
-(defn mod-apps [pulumi-cfg service-registry]
+(defn mod-apps [pulumi-cfg resource-configs]
   "Scans the registry, builds all needed providers, and calls deploy."
-  (provider-apply service-registry pulumi-cfg))
+  (provider-apply resource-configs pulumi-cfg))
 
 
 (defn mod-init [configs]
@@ -34,18 +34,23 @@
 
 (defn quick-deploy-base []
   (base/mod-quick-deploy
-   base-service-registry
+   base-resources-definition
    (fn [init]
-     (let [kcfg (p-> init .-cluster "generic:execute" .-kubeconfig)
-           vaultToken (p-> init .-openbao "generic:execute" "root-token")
+     (let [kcfg (p-> init .-cluster "generic:execute" .-kubeconfig)]
+       #js {:kubeconfig kcfg}))))
+
+(defn quick-deploy-init []
+  (base/mod-quick-deploy
+   initialize-resources-definition
+   (fn [init]
+     (let [vaultToken (p-> init .-openbao "generic:execute" "root-token")
            vaultAddress (p-> init .-openbao "generic:execute" .-address)]
-       #js {:kubeconfig kcfg
-            :vaultAddress vaultAddress
+       #js {:vaultAddress vaultAddress
             :vaultToken vaultToken}))))
 
 (defn quick-deploy-shared []
   (base/mod-quick-deploy
-     shared-service-registry
+     shared-resources-definition
      (fn [init]
        (let [secrets (p-> init .-harbor "vault:prepare" "stringData")]
          {:url (p-> secrets .-host #(str "https://" %))
@@ -55,7 +60,7 @@
 
 
 (defn quick-deploy-prepare []
-  (base/mod-quick-deploy prepare-service-registry extended-exports))
+  (base/mod-quick-deploy preparation-resources-definition extended-exports))
 
 (defn quick-deploy-services []
-  (base/mod-quick-deploy deployment-service-registry extended-exports))
+  (base/mod-quick-deploy deployment-resources-definition extended-exports))
