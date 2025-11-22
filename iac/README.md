@@ -213,7 +213,7 @@ kubectl get secret <secrets-name> -n <namespace> -o jsonpath='{.data}' | jq 'map
 ```
 kubectl get secret <SECRET-RESOURCE-NAME> -n harbor -o jsonpath='{.data}' | jq 'map_values(@base64d)'
 -----
-kubectl get secret harbor-creds-secrets -n harbor -o jsonpath='{.data}' | jq 'map_values(@base64d)'
+kubectl get secret api-token-secret -n cert-manager -o jsonpath='{.data}' | jq 'map_values(@base64d)'
 
 
 Generating an RSA PKCS#1 key with openssl:
