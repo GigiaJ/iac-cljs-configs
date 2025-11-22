@@ -6,5 +6,6 @@
 /app-services/.shadow-cljs/
 /out/
 /core/.clj-kondo/
+/generated/
 .env
 init-secrets.json
