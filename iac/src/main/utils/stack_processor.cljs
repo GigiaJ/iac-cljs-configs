@@ -142,6 +142,10 @@
                        :provider-key :k8s
                        :defaults-fn (fn [env] ((get-in default/defaults [:k8s :storage-class]) (:options env)))}
 
+   :k8s:pvc {:constructor (.. k8s -storage -v1 -PVC)
+             :provider-key :k8s
+             :defaults-fn (fn [env] ((get-in default/defaults [:k8s :pvc]) (:options env)))}
+
    :k8s:gateway {:constructor (.. gateway-api -v1 -Gateway)
                  :provider-key :k8s
                  :defaults-fn (fn [env] ((get-in default/defaults [:k8s :gateway]) (:options env)))}
@@ -152,7 +156,7 @@
 
    :k8s:cluster-issuer {:constructor (.. cert-manager -v1 -ClusterIssuer)
                         :provider-key :k8s
-                        :defaults-fn (fn [env] ((get-in default/defaults [:k8s :cluster-issuer]) (:options env)))}
+                        :defaults-fn (fn [env] ((get-in default/defaults [:k8s :cluster-issuer]) (:options env)))} 
 
    :k8s:certificates
    {:constructor (.. cert-manager -v1 -Certificate)
