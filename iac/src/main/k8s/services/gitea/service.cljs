@@ -1,11 +1,11 @@
 (ns k8s.services.gitea.service)
 
 (def config
-  {:stack [:vault-secrets :deployment :service :ingress]
+  {:stack [:vault:prepare :k8s:deployment :k8s:service :k8s:httproute]
    :image-port    3000
    :app-namespace "generic"
    :app-name      "gitea"
-   :deployment-opts {:spec {:template {:spec {:initContainers [
+   :k8s:deployment-opts {:spec {:template {:spec {:initContainers [
                                                                {:name "init-permissions"
                                                                 :image "busybox:latest"
                                                                 :command ["sh" "-c" "chown -R 1000:1000 /var/lib/gitea && chown -R 1000:1000 /etc/gitea"]
@@ -21,4 +21,5 @@
                                               :volumes [{:name "gitea-data" :hostPath {:path "/opt/gitea/data" :type "DirectoryOrCreate"}}
                                                         {:name "gitea-config" :hostPath {:path "/opt/gitea/config" :type "DirectoryOrCreate"}}
                                                         {:name "timezone" :hostPath {:path "/etc/timezone" :type "File"}}
-                                                        {:name "localtime" :hostPath {:path "/etc/localtime" :type "File"}}]}}}}})
+                                                        {:name "localtime" :hostPath {:path "/etc/localtime" :type "File"}}]}}}}
+   :k8s:httproute-opts {:spec {::hostnames ['host]}}})
