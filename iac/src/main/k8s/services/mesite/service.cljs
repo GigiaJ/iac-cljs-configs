@@ -8,9 +8,9 @@
   {:stack [:vault:prepare
            :harbor:robot-account
            :docker:image
-           [:k8s :namespace :deployment :service :ingress :httproute]] 
+           [:k8s :namespace :deployment :service :httproute]] 
    :app-name "mesite"
-   :namespace "generic"
+   :app-namespace "generic"
    :docker:image-opts {:context {:location "https://codeberg.org/Gigia/mesite.git"}
                        :imageName '(str registry-base "/" registry-namespace "/" app-name ":latest")
                        :registry {:server '(str registry-base "/" registry-namespace)
