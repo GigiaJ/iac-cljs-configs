@@ -29,33 +29,6 @@
 
 #_(def component-specs (build-registry component-specs-defs))
 
-
-;; We should move this to a list of safe-fns that extend the below inherently. That way we don't bloat this file.
-(defn make-listeners [domains-or-json]
-  (let [domains (if (string? domains-or-json)
-                  (js->clj (js/JSON.parse domains-or-json))
-                  domains-or-json)]
-    (vec
-     (mapcat
-      (fn [domain]
-        (let [clean-name (clojure.string/replace domain #"\." "-")
-              secret-name (str clean-name "-tls")]
-
-          [{:name (str "https-root-" clean-name)
-            :port 443
-            :protocol "HTTPS"
-            :hostname domain
-            :tls {:mode "Terminate"
-                  :certificateRefs [{:name secret-name}]}}
-
-           {:name (str "https-wild-" clean-name)
-            :port 443
-            :protocol "HTTPS"
-            :hostname (str "*." domain)
-            :tls {:mode "Terminate"
-                  :certificateRefs [{:name secret-name}]}}]))
-      domains))))
-
 (defn safe-parse-int [s]
   (let [n (js/parseInt s 10)]
     (if (js/isNaN n) nil n)))
