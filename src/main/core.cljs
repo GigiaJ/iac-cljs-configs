@@ -124,6 +124,26 @@
       (p/then #(println %))
       (p/catch #(println "An error occurred:" %))))
 
+
+;; Combo later w/ a reader to make a dynamic *stack* config
+#_(defn test-stack [inputs project-name config-declarations outputs]
+  {:pulumi-stack (clj->js  {:projectName project-name
+                            :stackName stack-name
+                            :workDir work-dir
+                            :program #(execute config-declarations outputs)})
+   :inputs inputs
+   :outputs outputs})
+
+#_(define-stack
+  [{:name "hetzner-k3s:sshKeyName" :value (-> cfg :sshKeyName) :secret false}
+   {:name "hetzner-k3s:sshPersonalKeyName" :value (-> cfg :sshPersonalKeyName) :secret false}
+   {:name "hcloud:token" :value (-> cfg :hcloudToken) :secret true}
+   {:name "hetzner-k3s:privateKeySsh" :value (-> cfg :privateKeySsh) :secret true}]
+  "base"
+  base-resources-definition
+  #(#js {:kubeconfig (p-> % .-cluster "generic:execute" .-kubeconfig)}))
+
+
 ;; Checks for changes on the core and prevents deleting the app-stack needlessly.
           ;; Important for the Openbao vault as it is deployed here and configured on the app-stack generally
           ;;core-preview-result (.preview core-stack #js {:onOutput println})
