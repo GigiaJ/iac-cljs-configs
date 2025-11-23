@@ -5,54 +5,96 @@
    ["child_process" :as cp]
    [promesa.core :as p]
    [base :as base]
-   [configs :refer [cfg]]))
+   [configs :refer [cfg]]
+   [utils.execution.general :as general]
+   [utils.execution.providers :refer [execute]]
+   [service-registries :refer [base-resources-definition 
+                               initialize-resources-definition
+                               shared-resources-definition
+                               preparation-resources-definition
+                               deployment-resources-definition]]
+   )
+  (:require-macros [utils.execution.general :refer [p->]]))
 
 
-(def base-stack (clj->js  {:projectName "hetzner-k3s"
-                           :stackName "base"
-                           :workDir "/home/jaggar/dotfiles/iac"
-                           :program base/quick-deploy-base}))
+(defn define-stack [project-name stack-name work-dir program]
+  (clj->js  {:projectName project-name
+             :stackName stack-name
+             :workDir work-dir
+             :program program}))
 
-(def init-stack (clj->js  {:projectName "hetzner-k3s"
-                           :stackName "init"
-                           :workDir "/home/jaggar/dotfiles/iac"
-                           :program base/quick-deploy-init}))
 
-(def shared-platform-stack (clj->js  {:projectName "hetzner-k3s"
-                                      :stackName "shared"
-                                      :workDir "/home/jaggar/dotfiles/iac"
-                                      :program base/quick-deploy-shared}))
+(def base-stack
+  (define-stack
+    "hetzner-k3s"
+    "base"
+    "/home/jaggar/dotfiles/iac"
+    (execute
+     base-resources-definition
+     #(#js {:kubeconfig (p-> % .-cluster "generic:execute" .-kubeconfig)}))))
 
-(def prepare-deployment-stack (clj->js  {:projectName "hetzner-k3s"
-                                      :stackName "prepare"
-                                      :workDir "/home/jaggar/dotfiles/iac"
-                                      :program base/quick-deploy-prepare}))
+(def init-stack
+  (define-stack 
+    "hetzner-k3s"
+    "init"
+    "/home/jaggar/dotfiles/iac"
+    (execute
+     initialize-resources-definition
+     #(#js {:vaultAddress (p-> % .-openbao "generic:execute" .-address)
+            :vaultToken (p-> % .-openbao "generic:execute" "root-token")}))))
 
-(def deployment-stack (clj->js  {:projectName "hetzner-k3s"
-                                 :stackName "deployment"
-                                 :workDir "/home/jaggar/dotfiles/iac"
-                                 :program base/quick-deploy-services}))
+(def shared-platform-stack
+  (define-stack
+    "hetzner-k3s"
+    "shared"
+    "/home/jaggar/dotfiles/iac"
+    (execute
+     shared-resources-definition
+     #(let [secrets (p-> % .-harbor "vault:prepare" "stringData")]
+        #js {:url (p-> secrets .-host (fn [x] (str "https://" x)))
+             :username (p-> secrets .-username)
+             :password (p-> secrets .-password)}))))
+
+(def prepare-deployment-stack
+  (define-stack
+    "hetzner-k3s"
+    "prepare"
+    "/home/jaggar/dotfiles/iac"
+    (execute preparation-resources-definition (fn [output] {}))))
+
+(def deployment-stack
+  (define-stack
+    "hetzner-k3s"
+    "deployment"
+    "/home/jaggar/dotfiles/iac"
+    (execute deployment-resources-definition (fn [output] {}))))
+
 
 (defn deploy-stack
-  ([stack-definition configs]
-   (deploy-stack stack-definition configs 0))
+  ([stack-definition inputs]
+   (deploy-stack stack-definition inputs 0))
 
-  ([stack-definition configs post-delay]
+  ([stack-definition inputs post-delay]
    (p/let
     [stack (.createOrSelectStack pulumi-auto/LocalWorkspace stack-definition)
-     _     (p/doseq [config configs]
-             (.setConfig stack (:name config)  (clj->js (dissoc config :name))))
+     _     (p/doseq [input inputs]
+             (.setConfig stack (:name input)  (clj->js (dissoc confinputig :name))))
      _     (.up stack #js {:onOutput println})
      outputs (.outputs stack)
      _     (p/delay post-delay)]
      outputs)))
 
+
+
+
 (defn run []
   (p/let [_ (println "Deploying cluster")
-          base-outputs (deploy-stack base-stack [{:name "hetzner-k3s:sshKeyName" :value (-> cfg :sshKeyName) :secret false}
-                                                 {:name "hetzner-k3s:sshPersonalKeyName" :value (-> cfg :sshPersonalKeyName) :secret false}
-                                                 {:name "hcloud:token" :value (-> cfg :hcloudToken) :secret true}
-                                                 {:name "hetzner-k3s:privateKeySsh" :value (-> cfg :privateKeySsh) :secret true}])
+          base-outputs (deploy-stack
+                        base-stack
+                        [{:name "hetzner-k3s:sshKeyName" :value (-> cfg :sshKeyName) :secret false}
+                         {:name "hetzner-k3s:sshPersonalKeyName" :value (-> cfg :sshPersonalKeyName) :secret false}
+                         {:name "hcloud:token" :value (-> cfg :hcloudToken) :secret true}
+                         {:name "hetzner-k3s:privateKeySsh" :value (-> cfg :privateKeySsh) :secret true}])
 
           reused-configs [{:name "kubeconfig" :value (-> base-outputs (aget "kubeconfig") (.-value)) :secret true}]
 
