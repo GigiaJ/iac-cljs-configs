@@ -1,4 +1,4 @@
-(ns service-registries
+(ns stack-resource-definitions
   (:require
    [infra.init :as init]
    [infra.openbao :as openbao]
@@ -68,7 +68,7 @@
 
 (def deployment-resources-definition
   (create-resource-definition
-   [#_buildkit/config #_nextcloud-service/config #_foundryvtt-service/config mesite-service/config #_productive-service/config #_gitea-service/config #_act-runner-service/config]
+   [nextcloud-service/config foundryvtt-service/config mesite-service/config productive-service/config gitea-service/config act-runner-service/config]
    ["base" "init" "shared"]
    (general-provider-output-refs)))
 
