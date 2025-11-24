@@ -1,20 +1,18 @@
 (ns core
   (:require
-   ["@pulumi/pulumi" :as pulumi]
    ["@pulumi/pulumi/automation" :as pulumi-auto]
    ["child_process" :as cp]
    [promesa.core :as p]
-   [base :as base]
    [configs :refer [cfg]]
-   [utils.execution.general :as general]
-   [utils.execution.providers :refer [execute]]
+   [pulumicljs.execution.general :as general]
+   [pulumicljs.execution.providers :refer [execute]]
    [stack-resource-definitions :refer [base-resources-definition 
-                               initialize-resources-definition
-                               shared-resources-definition
-                               preparation-resources-definition
-                               deployment-resources-definition]]
+                                       initialize-resources-definition
+                                       shared-resources-definition
+                                       preparation-resources-definition
+                                       deployment-resources-definition]]
    )
-  (:require-macros [utils.execution.general :refer [p->]]))
+  (:require-macros [pulumicljs.execution.general :refer [p->]]))
 
 
 (defn define-stack [project-name stack-name work-dir program]
@@ -31,7 +29,8 @@
     "/home/jaggar/dotfiles/iac"
     (execute
      base-resources-definition
-     #(#js {:kubeconfig (p-> % .-cluster "generic:execute" .-kubeconfig)}))))
+     (fn [output] (let [_ (js/console.log output)]
+                    #js {:kubeconfig (p-> output .-cluster "generic:execute" .-kubeconfig)})))))
 
 (def init-stack
   (define-stack 
@@ -40,8 +39,8 @@
     "/home/jaggar/dotfiles/iac"
     (execute
      initialize-resources-definition
-     #(#js {:vaultAddress (p-> % .-openbao "generic:execute" .-address)
-            :vaultToken (p-> % .-openbao "generic:execute" "root-token")}))))
+     (fn [output] #js {:vaultAddress (p-> output .-openbao "generic:execute" .-address)
+                       :vaultToken (p-> output .-openbao "generic:execute" "root-token")}))))
 
 (def shared-platform-stack
   (define-stack
@@ -50,10 +49,10 @@
     "/home/jaggar/dotfiles/iac"
     (execute
      shared-resources-definition
-     #(let [secrets (p-> % .-harbor "vault:prepare" "stringData")]
+     (fn [output] (let [secrets (p-> output .-harbor "vault:prepare" "stringData")]
         #js {:url (p-> secrets .-host (fn [x] (str "https://" x)))
              :username (p-> secrets .-username)
-             :password (p-> secrets .-password)}))))
+             :password (p-> secrets .-password)})))))
 
 (def prepare-deployment-stack
   (define-stack
@@ -78,7 +77,7 @@
    (p/let
     [stack (.createOrSelectStack pulumi-auto/LocalWorkspace stack-definition)
      _     (p/doseq [input inputs]
-             (.setConfig stack (:name input)  (clj->js (dissoc confinputig :name))))
+             (.setConfig stack (:name input)  (clj->js (dissoc input :name))))
      _     (.up stack #js {:onOutput println})
      outputs (.outputs stack)
      _     (p/delay post-delay)]
