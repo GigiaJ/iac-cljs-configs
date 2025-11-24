@@ -8,7 +8,7 @@
    [configs :refer [cfg]]
    [utils.execution.general :as general]
    [utils.execution.providers :refer [execute]]
-   [service-registries :refer [base-resources-definition 
+   [stack-resource-definitions :refer [base-resources-definition 
                                initialize-resources-definition
                                shared-resources-definition
                                preparation-resources-definition
