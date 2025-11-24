@@ -51,8 +51,8 @@
 
 (def shared-resources-definition
   (create-resource-definition
-   [dns/config wasabi-csi/config proxy/config secret-replicator/config 
-    traefik/config cert-manager/config
+   [traefik/config cert-manager/config
+    dns/config wasabi-csi/config proxy/config secret-replicator/config 
     harbor/config
     ]
    ["base" "init"]
