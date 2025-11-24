@@ -13,3 +13,5 @@ init-secrets.json
 /.clj-kondo/
 kubeconfig.yaml
 /.cpcache/
+package-lock.json
+db.transit.json
