@@ -27,17 +27,16 @@
     "hetzner-k3s"
     "base"
     "/home/jaggar/dotfiles/iac"
-    (execute
-     base-resources-definition
-     (fn [output] (let [_ (js/console.log output)]
-                    #js {:kubeconfig (p-> output .-cluster "generic:execute" .-kubeconfig)})))))
+    #(execute
+      base-resources-definition
+      (fn [output] #js {:kubeconfig (p-> output .-cluster "generic:execute" .-kubeconfig)}))))
 
 (def init-stack
   (define-stack 
     "hetzner-k3s"
     "init"
     "/home/jaggar/dotfiles/iac"
-    (execute
+    #(execute
      initialize-resources-definition
      (fn [output] #js {:vaultAddress (p-> output .-openbao "generic:execute" .-address)
                        :vaultToken (p-> output .-openbao "generic:execute" "root-token")}))))
@@ -47,7 +46,7 @@
     "hetzner-k3s"
     "shared"
     "/home/jaggar/dotfiles/iac"
-    (execute
+    #(execute
      shared-resources-definition
      (fn [output] (let [secrets (p-> output .-harbor "vault:prepare" "stringData")]
         #js {:url (p-> secrets .-host (fn [x] (str "https://" x)))
@@ -59,14 +58,14 @@
     "hetzner-k3s"
     "prepare"
     "/home/jaggar/dotfiles/iac"
-    (execute preparation-resources-definition (fn [output] {}))))
+    #(execute preparation-resources-definition (fn [output] {}))))
 
 (def deployment-stack
   (define-stack
     "hetzner-k3s"
     "deployment"
     "/home/jaggar/dotfiles/iac"
-    (execute deployment-resources-definition (fn [output] {}))))
+    #(execute deployment-resources-definition (fn [output] {}))))
 
 
 (defn deploy-stack
