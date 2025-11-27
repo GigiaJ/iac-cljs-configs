@@ -13,7 +13,7 @@
                                   :password (-> cfg :public-image-registry-password)}
                        :tags [(str (-> cfg :public-image-registry-url) "/" (-> cfg :public-image-registry-username) "/" "caddy")]
                        :push true}
-   :k8s:chart-opts {:fetchOpts {:repo "https://caddyserver.github.io/ingress"}
+   :k8s:chart-opts {:repositoryOpts {:repo "https://caddyserver.github.io/ingress"}
                     :values
                     {:ingressController
                      {:deployment {:kind "DaemonSet"}
