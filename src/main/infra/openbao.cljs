@@ -274,7 +274,7 @@
    :app-name "openbao"
    :exec-fn  execute-fn
    :vault-load-yaml false
-   :k8s:chart-opts {:fetchOpts {:repo "https://openbao.github.io/openbao-helm"}
+   :k8s:chart-opts {:repositoryOpts {:repo "https://openbao.github.io/openbao-helm"}
                 :transformations [(fn [props opts]
                                    (let [kind (:kind props)]
                                      (if (= kind "StatefulSet")
