@@ -6,14 +6,14 @@
    [infra.dns :as dns]
    [k8s.preparers.harbor :as harbor-prepare]
    
-   [k8s.add-ons.ingress-controller.caddy :as caddy]
    [k8s.add-ons.gateway.traefik :as traefik]
    [k8s.add-ons.cert-manager :as cert-manager]
+   [k8s.add-ons.crd.cert-manager :as cert-manager-crd]
+   [k8s.add-ons.crd.gateway-api :as gateway-api-crd]
+   [k8s.add-ons.crd.traefik :as traefik-crds]
    [k8s.add-ons.csi-driver.wasabi :as wasabi-csi]
    [k8s.add-ons.image-registry.harbor :as harbor]
    [k8s.add-ons.secret-replicator :as secret-replicator]
-   [k8s.add-ons.minio :as minio]
-   [k8s.add-ons.s3proxy :as s3proxy]
    [k8s.add-ons.proxy :as proxy]
    [k8s.services.nextcloud.service :as nextcloud-service]
    [k8s.services.mesite.service :as mesite-service]
@@ -51,8 +51,13 @@
 
 (def shared-resources-definition
   (create-resource-definition
-   [traefik/config cert-manager/config
-    dns/config wasabi-csi/config proxy/config secret-replicator/config 
+   [dns/config
+    cert-manager-crd/config
+    gateway-api-crd/config
+    traefik-crds/config
+    cert-manager/config
+    traefik/config
+    wasabi-csi/config proxy/config secret-replicator/config 
     harbor/config
     ]
    ["base" "init"]
@@ -67,7 +72,7 @@
 
 (def deployment-resources-definition
   (create-resource-definition
-   [nextcloud-service/config foundryvtt-service/config mesite-service/config productive-service/config gitea-service/config act-runner-service/config]
+   [#_nextcloud-service/config foundryvtt-service/config mesite-service/config productive-service/config gitea-service/config act-runner-service/config]
    ["base" "init" "shared"]
    (general-provider-output-refs)))
 
