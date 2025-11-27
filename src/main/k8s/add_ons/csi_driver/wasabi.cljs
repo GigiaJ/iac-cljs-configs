@@ -7,7 +7,7 @@
    :no-namespace true
    :app-name      "wasabi-csi"
    :k8s:chart-opts {:chart "csi-s3"
-                :fetchOpts {:repo "https://yandex-cloud.github.io/k8s-csi-s3/charts"}
+                :repositoryOpts {:repo "https://yandex-cloud.github.io/k8s-csi-s3/charts"}
                 :values {:controller {:enabled false
                                                         :existingSecret {:name "wasabi-csi-secrets"}
                                                         :node {:existingSecret {:name "wasabi-csi-secrets"}}}}
