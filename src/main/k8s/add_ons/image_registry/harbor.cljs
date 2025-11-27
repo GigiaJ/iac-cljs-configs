@@ -6,7 +6,7 @@
    :app-name "harbor"
    :image-port 80
    :vault-load-yaml false
-   :k8s:chart-opts {:fetchOpts {:repo "https://helm.goharbor.io"}
+   :k8s:chart-opts {:repositoryOpts {:repo "https://helm.goharbor.io"}
                     :values {:externalURL '(str "https://" host)
                              :expose {:type "route"
                                       :tls {:enabled false}
