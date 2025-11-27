@@ -10,7 +10,7 @@
    :k8s:secret-opts {:metadata {:name "hcloud"
                             :namespace "kube-system"}
                  :stringData {:token  (-> cfg :hcloudToken)}}
-   :k8s:chart-opts {:fetchOpts {:repo "https://charts.hetzner.cloud"}
+   :k8s:chart-opts {:repositoryOpts {:repo "https://charts.hetzner.cloud"}
                 :values {:controller {:enabled false
                                       :existingSecret {:name "hcloud-csi-secret"}
                                       :node {:existingSecret {:name "hcloud-csi-secret"}}}}}})
