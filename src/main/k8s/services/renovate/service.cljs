@@ -8,7 +8,7 @@
    :image-port    8080
    :vault-load-yaml true
    :chart-opts
-   {:fetchOpts {:repo "https://docs.renovatebot.com/helm-charts"}
+   {:repositoryOpts {:repo "https://docs.renovatebot.com/helm-charts"}
     :values
     {:renovate
      {:config {:platform "github"
