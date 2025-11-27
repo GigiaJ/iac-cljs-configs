@@ -3,6 +3,7 @@ My cluster configuration that serves to automate the deployment and handling of 
 
 I'll try to include any pertinent documentation here in the tooling I use or the setup.
 
+#### This uses a very much alpha build of my pulumi-cljs library
 
 #### Upcoming
 Currently only want to expand on making the final service declarations functional.
