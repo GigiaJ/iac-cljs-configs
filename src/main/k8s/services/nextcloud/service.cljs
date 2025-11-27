@@ -6,7 +6,7 @@
    :app-name      "nextcloud"
    :image-port 8080
    :vault-load-yaml true
-   :chart-opts {:fetchOpts {:repo "https://nextcloud.github.io/helm/"}
+   :chart-opts {:repositoryOpts {:repo "https://nextcloud.github.io/helm/"}
                 :values {:nextcloud {:host 'host
                                      :trustedDomains ['host 'app-name]}}
                 :transformations (fn [args _opts]
