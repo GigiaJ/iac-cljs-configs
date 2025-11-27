@@ -5,7 +5,7 @@
    :app-namespace "cert-manager"
    :app-name "cert-manager"
    :is-prod? true
-   :k8s:chart-opts {:fetchOpts {:repo "https://charts.jetstack.io"}
+   :k8s:chart-opts {:repositoryOpts {:repo "https://charts.jetstack.io"}
                     :chart "cert-manager"
                     :version "v1.15.0"
                     :namespace "cert-manager"
