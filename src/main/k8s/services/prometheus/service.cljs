@@ -7,7 +7,7 @@
    :image-port 8080
    :vault-load-yaml true
    :chart-opts {:chart "kube-prometheus-stack"
-                :fetchOpts {:repo "https://prometheus-community.github.io/helm-charts"}
+                :repositoryOpts {:repo "https://prometheus-community.github.io/helm-charts"}
                 :namespace "monitoring"
                 :values {:grafana {:adminPassword 'password
                                    :ingress {:enabled true
