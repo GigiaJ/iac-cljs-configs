@@ -5,117 +5,18 @@ I'll try to include any pertinent documentation here in the tooling I use or the
 
 
 #### Upcoming
-Break this into three repos. IaC, the Pulumi CLJS library, and my dot files. We'll also be moving data from our old instances to the new IaC managed cluster. c:
-Current roadmap for that is breaking apart the Vault provider into its actual core components as it is currently an anti-pattern in the way it combines multiple provider functionalities through it. It relying on the config file even is a bit of an issue.
-Furthermore, we are unable to effectively destructure secrets in the execute function in the current design. However, since we'd want to change to remove the anti-pattern mentioned above, we'd ideally actually just reference secrets through the vault resource output from the given resource config's stack execution.
+Currently only want to expand on making the final service declarations functional.
+I'll be revising the library to better incorporate changes I'd like to see and I'd like to make the core cleaned up further.
+In the more immediate that'd be:
+- Simplifying the declarations
+- Pulling out the library functions
+- Cleaning up how re-used configs are appended to
 
-get-provider-outputs-config inside utils.providers.cljs currently runs under the expectation that shared stack already exists... which inherently is flawed on an initial run. Will need to revise a little. Similarly get-stack-refs works on the same flawed principle.
-Maybe we can move them to stack definitions (which currently exist in base.cljs). I think in an ideal design we could actually inherently scope the entire thing out. I'm inspired by how Guix allows system definitions to be written, and there isn't anything stopping a large block for a stack being like:
-```
-(def some-stack
-{:stack-registry
- [{:stack [:k8s:secret :k8s:chart]
-   :app-namespace "kube-system"
-   :app-name "hcloud-csi"
-   :vault-load-yaml false
-   :k8s:secret-opts {:metadata {:name "hcloud"
-                            :namespace "kube-system"}
-                 :stringData {:token  (-> cfg :hcloudToken)}}
-   :k8s:chart-opts {:fetchOpts {:repo "https://charts.hetzner.cloud"}
-                :values {:controller {:enabled false
-                                      :existingSecret {:name "hcloud-csi-secret"}
-                                      :node {:existingSecret {:name "hcloud-csi-secret"}}}}}}
-    {:stack [:vault:prepare :docker:image :k8s:secret :k8s:chart]
-   :app-namespace "caddy-system"
-   :app-name      "caddy-ingress-controller"
-   :k8s:image-port 8080
-   :k8s:vault-load-yaml false
-   :k8s:image-opts {:imageName '(str repo "/" app-name ":latest")}
-   :docker:image-opts {:registry {:server (-> cfg :public-image-registry-url)
-                                  :username (-> cfg :public-image-registry-username)
-                                  :password (-> cfg :public-image-registry-password)}
-                       :tags [(str (-> cfg :public-image-registry-url) "/" (-> cfg :public-image-registry-username) "/" "caddy")]
-                       :push true}
-   :k8s:chart-opts {:fetchOpts {:repo "https://caddyserver.github.io/ingress"}
-                    :values
-                    {:ingressController
-                     {:deployment {:kind "DaemonSet"}
-                      :daemonSet {:useHostPort true}
-                      :ports {:web {:hostPort 80}
-                              :websecure {:hostPort 443}}
-                      :service {:type "NodePort"
-                                :externalTrafficPolicy "Local"}
-                      :image {:repository 'repo
-                              :tag "latest"}
-                      :config {:email 'email}}}}}
-    ]
-    :stack-references { :init (new pulumi/StackReference "init") 
-                        :shared (new pulumi/StackReference "shared")}
-    :provider-configs {:harbor {:stack :shared
-                :outputs ["username" "password" "url"]}}
-    })
-```
-and that effectively defines an entire stack and is executable on (with the option to scope out to files to reduce the sheer verbosity in a single)
-In that regard, I think we've made decent headway in achieving a similar design and behavior where a config should provide reproducible results.
-Due to the nature of npm packages, it is a bit hard to *lock* to certain package versions as easily.
+Eventually the user will have more programmatic choice of execution too so as to have a program that ingests the library first and applies their stack defaults to it.
+The only limitation there would be that it does limit multi-cloud designs perhaps. Though for those, the unconsumed library would still be very much a practical option.
 
-DNS should be swapped with a Cloudflare provider instead and more appropriately allow EACH service to plainly define a DNS entry.
+To be more clear eventually rewriting the specs for defaults to match whatever stack configs given is likely the most optimal choice. Basically utilizing the homoiconic nature of Clojure and consuming the first program to generate the final one. Stubbing in the replacements as we walk through it.
 
-Local config loading or something should also be a provider, as obviously we would want to be able to pass through virtually anything to a service. That way they can be accessed later (this would replace the weird load-yaml that is a leftover from prior iterations)
-
-pulumi2crd should perhaps include some install instructions and some insight into usage
-Currently the script builds correctly, but since they are version dependant we might want to have some sort of version management for each of these components. That way they can be updated in a similar mechanism to a normal npm package. We can make CICD pipelines for them for this with some sort of cron scheduling. Emulating Renovate behavior (or we can see if Renovate can be useful here even).
-
-Those generated CRDs should not be baked into the provider utils but instead be treated as an expansion. This way it is neatly organized into official and extended functionality.
-
-Default values (like in K8) are opinionated. They do need to outline how to use a structure for example, but it should also be convenient to use any other resource like Nginx instead of Traefik or Azure instead of Cloudflare. A macro could be applied to them (preferably after their declaration, so their default state remains opinionated) to swap out which provider an individual chooses to use. It can be an added field in the core declarations for processing. Obvious goal for this is expansiveness. There should be clean, reusable defaults and everything should be easily modifiable and expandable.
-
-
-Resource declarations might benefit from being *able* to splinter when needed. Currently they are VERY MUCH locked to a singleton pattern. While we can "loop" over stuff inside a declaration it still only ever makes *one* resource.
-
-Currently, certificates relies upon a prior step existing and that in itself is a bit of an anti-pattern... So in the future our options NEED some way of informing the resolver and deployer that it has custom execution.
-```
-:k8s:certificates
-   {:constructor (.. cert-manager -v1 -Certificate)
-    :provider-key :k8s
-    :defaults-fn (fn [env]
-                   (p-> env :options :vault:prepare "stringData" .-domains
-                        #(vec
-                          (for [domain (js/JSON.parse %)] 
-                            (let [clean-name (clojure.string/replace domain #"\." "-")]
-                              {:_suffix clean-name
-                               :spec {:dnsNames [domain (str "*." domain)]
-                                      :secretName (str clean-name "-tls")}})))))}
-```
-The above is unideal. I think the best path forward for that is an override?  Considering that some might not use Vault.
-It might, instead, benefit from a high level user declaration of intent regarding the location of their secrets/settings. I mentioned above to have it resolve based on what providers utilized (within reason for support). That removes the inherent reliance, but it still does leave resolution in the default-fn in an unideal manner. It doesn't work to make top-level functions resolve on the outer layer as the Vault entry wouldn't exist yet. 
-If we do the user intent, we can at least change it to be a standard such as 
-```
-(p-> env :options :secrets .-domains #(function here))
-```
-I should add that this function would be in a more *plugin* since it isn't inherently a built-in for K8s. Same for Gateway.
-
-It wouldn't hurt to add some extension for developing these too. Increasing clarity on manner of declaration can not hurt.
-
-Should also revise default-fn to recursively call certificate and just allow the default-fn to unwind the values.
-
----
-It may be helpful to redesign the stack mechanism entirely so that resources and such are declared like:
-(def config
-    {:stack [
-        {:item-name 
-            {:options-in-here}} 
-        {:item-name-2 
-            {:options-in-here}}
-    ]})
-Where this provides much clearer association and each resource has its options readily available. As such you could declare duplicate keys in the same config. It would make resource associations much more explicit and cleaner written.
-It would require a decent amount of revision, so no rush on this.
-
-
-Mentioned above a bit, but eventually rewriting the specs for defaults to match whatever stack configs given is likely the most optimal choice. Basically utilizing the homoiconic nature of Clojure and consuming the first program to generate the final one. Stubbing in the replacements as we walk through it.
-
-
-Component spec really needs to be moved out of stack_processor as it is just such a large block of data that so better belongs w/ the providers themselves.
 
 ---
 
@@ -123,7 +24,6 @@ Component spec really needs to be moved out of stack_processor as it is just suc
 The long term goal is for this to be a mostly uninteractive, to completion set up of my cloud services. Since it'll be IaC should I ever choose down the road to migrate certain ones to local nodes I run then that effort should also be more or less feasible.
 
 More immediately, as we've closed in on a functional end-to-end alpha build and learned several choices we could've made to better design a next build, we'll actually use this to move our services off a single VPS w/ a docker compose and into a cluster fully generated by this with no setup or involvement on our part.
-
 
 
 ### Initial requirements
