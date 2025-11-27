@@ -6,4 +6,4 @@
    :no-namespace true
    :app-namespace "kube-system"
    :app-name      "kubernetes-replicator"
-   :k8s:chart-opts {:fetchOpts {:repo "https://helm.mittwald.de"}}})
+   :k8s:chart-opts {:repositoryOpts {:repo "https://helm.mittwald.de"}}})
