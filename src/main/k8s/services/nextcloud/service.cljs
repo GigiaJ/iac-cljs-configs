@@ -1,12 +1,13 @@
 (ns k8s.services.nextcloud.service)
 
+;; Need to automate set-up/restore
 (def config
-  {:stack [:vault-secrets :chart :ingress]
+  {:stack [:vault-secrets :k8s:chart :k8s:httproute]
    :app-namespace "nextcloud"
    :app-name      "nextcloud"
    :image-port 8080
    :vault-load-yaml true
-   :chart-opts {:repositoryOpts {:repo "https://nextcloud.github.io/helm/"}
+   :k8s:chart-opts {:repositoryOpts {:repo "https://nextcloud.github.io/helm/"}
                 :values {:nextcloud {:host 'host
                                      :trustedDomains ['host 'app-name]}}
                 :transformations (fn [args _opts]
@@ -14,4 +15,6 @@
                                      (if (some #{kind} ["StatefulSet" "PersistentVolumeClaim" "Ingress"])
                                        (update-in args [:resource :metadata :annotations]
                                                   #(assoc (or % {}) "pulumi.com/skipAwait" "true"))
-                                       args)))}})
+                                       args)))}
+   :k8s:httproute-opts {:spec {::hostnames ['host]}}
+   })
