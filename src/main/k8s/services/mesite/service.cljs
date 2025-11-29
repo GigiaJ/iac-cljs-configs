@@ -8,7 +8,7 @@
   {:stack [:vault:prepare
            :harbor:robot-account
            :docker:image
-           [:k8s :namespace :deployment :service :httproute]] 
+           [:k8s :deployment :service :httproute]] 
    :app-name "mesite"
    :app-namespace "generic"
    :docker:image-opts {:context {:location "https://codeberg.org/Gigia/mesite.git"}
