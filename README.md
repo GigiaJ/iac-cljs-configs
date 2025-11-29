@@ -201,6 +201,25 @@ node -e 'console.log("admin:" + require("bcryptjs").hashSync("password", 10))'
 ```
 
 
+#### Restore Redis backup
+If the JuiceFS pods are crashing saying "Database not formatted."
+
+1. Download the backup Grab the latest JSON file from your pulumi-redis-backup bucket.
+2. Restore the Metadata You need to run the load command. You can do this from a temporary pod or any machine that can talk to the Redis service.
+Bash
+
+###### Spin up a temporary toolbox pod
+kubectl run -it --rm juicefs-restore --image=juicedata/mount:ce-v1.2.0 -- sh
+
+###### Inside the pod:
+1. Download your backup file (or copy/paste it if it's small)
+    (Assuming you copied the JSON content to a file named 'backup.json')
+2. Run the load command
+   Format: juicefs load redis://:PASS@HOST:PORT/DB backup.json
+juicefs load redis://:$(REDIS_PASS)@juicefs-redis.kube-system.svc.cluster.local:6379/1 backup.json
+3. Restart the JuiceFS Pods Once the load command finishes, the metadata is back. Delete the JuiceFS CSI pods (or the application pods using them) to force them to restart. They will connect, see the valid filesystem, and mount instantly.
+
+
 https://www.pulumi.com/registry/packages/docker-build/api-docs/image/
 https://www.pulumi.com/registry/packages/docker/api-docs/buildxbuilder/#create
 
