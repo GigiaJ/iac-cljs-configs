@@ -7,9 +7,8 @@
    :is-prod? true
    :k8s:chart-opts {:repositoryOpts {:repo "https://charts.jetstack.io"}
                     :chart "cert-manager"
-                    :version "v1.15.0"
-                    :namespace "cert-manager"
-                    :values {:installCRDs true}}
+                    :version "v1.19.1"
+                    :namespace "cert-manager"}
    :k8s:secret-opts {:metadata {:name "api-token-secret"}
                      :stringData {:apiToken 'token}}
    :k8s:cluster-issuer-opts {:spec {:acme {:email 'email
