@@ -77,9 +77,10 @@
 
 (def deployment-resources-definition
   (create-resource-definition
-   [#_nextcloud-service/config 
-    girls-foundry-service/config
-    foundryvtt-service/config mesite-service/config productive-service/config gitea-service/config act-runner-service/config]
+   [girls-foundry-service/config
+    foundryvtt-service/config mesite-service/config productive-service/config gitea-service/config act-runner-service/config
+    #_nextcloud-service/config
+    ]
    ["base" "init" "shared"]
    (general-provider-output-refs)))
 
