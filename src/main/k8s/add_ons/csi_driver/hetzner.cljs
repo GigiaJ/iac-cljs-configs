@@ -5,6 +5,7 @@
 (def config
   {:stack [:k8s:secret :k8s:chart]
    :app-namespace "kube-system"
+   :no-namespace true
    :app-name "hcloud-csi"
    :vault-load-yaml false
    :k8s:secret-opts {:metadata {:name "hcloud"
