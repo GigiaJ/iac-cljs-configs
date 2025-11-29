@@ -1,0 +1,72 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: juicefs-metadata-backup
+  namespace: kube-system
+spec:
+  schedule: "0 3 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          volumes:
+            - name: backup-dir
+              emptyDir: {}
+          
+          initContainers:
+            - name: dumper
+              image: juicedata/mount:ce-v1.2.0
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  echo "Starting JuiceFS Metadata Dump..."
+                  juicefs dump redis://:$(REDIS_PASS)@juicefs-redis.kube-system.svc.cluster.local:6379/1 > /backups/juicefs-meta.json
+                  if [ -s /backups/juicefs-meta.json ]; then
+                    echo "Dump successful (Size: $(du -h /backups/juicefs-meta.json | cut -f1))"
+                  else
+                    echo "Dump failed: File is empty"
+                    exit 1
+                  fi
+              volumeMounts:
+                - name: backup-dir
+                  mountPath: /backups
+              env:
+                - name: REDIS_PASS
+                  valueFrom:
+                    secretKeyRef:
+                      name: juicefs-redis-secrets
+                      key: password
+
+          containers:
+            - name: uploader
+              image: minio/mc:latest
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  echo "Configuring S3 Client..."
+                  mc alias set s3storage $S3_ENDPOINT $S3_ACCESS_KEY $S3_SECRET_KEY
+                  echo "Uploading backup..."
+                  FILENAME="juicefs-meta-$(date +%Y-%m-%d).json"
+                  mc cp /backups/juicefs-meta.json s3storage/$S3_BUCKET/backups/$FILENAME
+                  echo "Backup Complete!"
+              volumeMounts:
+                - name: backup-dir
+                  mountPath: /backups
+              env:
+                - name: S3_ENDPOINT
+                  value: "http://wasabi-proxy.wasabi-proxy.svc.cluster.local"
+                - name: S3_BUCKET
+                  value: "pulumi-redis-backup"
+                - name: S3_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: juicefs-csi-secrets
+                      key: access-key
+                - name: S3_SECRET_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: juicefs-csi-secrets
+                      key: secret-key
