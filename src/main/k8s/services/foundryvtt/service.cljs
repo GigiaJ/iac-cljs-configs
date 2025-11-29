@@ -1,7 +1,7 @@
 (ns k8s.services.foundryvtt.service)
 
 (def config
-  {:stack [:vault:prepare :harbor:robot-account :docker:image [:k8s :deployment :service :httproute]]
+  {:stack [:vault:prepare :harbor:robot-account :docker:image [:k8s :pvc :deployment :service :httproute]]
    :image-port     30000
    :app-namespace "generic"
    :app-name      "foundry"
@@ -14,11 +14,23 @@
                        :tags ['(str registry-base "/" registry-namespace "/" app-name)]
                        :push true}
    :k8s:deployment-opts {:spec {:template {:spec {:imagePullSecrets [{:name "harbor-creds-secrets"}]
-                                                  :containers [{:name 'app-name :image '(str registry-base "/" registry-namespace "/" app-name ":latest")}]}}}}
+                                                  :volumes [{:name "data-vol"
+                                                            :persistentVolumeClaim {:claimName "vtt-assets"}}]
+                                                  :containers [{:name 'app-name :image '(str registry-base "/" registry-namespace "/" app-name ":latest")
+                                                                :volumeMounts [{:name "data-vol"
+                                                                                :mountPath "/root/.local/share"
+                                                                                :mountPropagation "HostToContainer"}]
+                                                                }]}}}}
    :harbor:robot-account-opts {:name 'app-name
                                :permissions [{:kind "project"
                                               :namespace 'registry-namespace
                                               :access [{:action "pull" :resource "repository"}
                                                        {:action "push" :resource "repository"}
                                                        {:action "list" :resource "repository"}]}]}
+   :k8s:pvc-opts
+   {:metadata {:name "vtt-assets"
+               :namespace "generic"}
+    :spec {:storageClassName "juicefs-sc"
+           :accessModes ["ReadWriteMany"] 
+           :resources {:requests {:storage "10Gi"}}}}
    :k8s:httproute-opts {:spec {::hostnames ['host]}}})
