@@ -11,7 +11,9 @@
    [k8s.add-ons.crd.cert-manager :as cert-manager-crd]
    [k8s.add-ons.crd.gateway-api :as gateway-api-crd]
    [k8s.add-ons.crd.traefik :as traefik-crds]
+   [k8s.add-ons.csi-driver.juicefs :as juicefs-csi]
    [k8s.add-ons.csi-driver.wasabi :as wasabi-csi]
+   [k8s.add-ons.csi-driver.extra.redis :as redis-juicefs]
    [k8s.add-ons.image-registry.harbor :as harbor]
    [k8s.add-ons.secret-replicator :as secret-replicator]
    [k8s.add-ons.proxy :as proxy]
@@ -20,6 +22,7 @@
    [k8s.services.gitea.service :as gitea-service]
    [k8s.services.act-runner.service :as act-runner-service]
    [k8s.services.foundryvtt.service :as foundryvtt-service]
+   [k8s.services.foundryvtt.service-2 :as girls-foundry-service]
    [k8s.services.productive.service :as productive-service]))
 
 (defn general-provider-output-refs []
@@ -51,13 +54,15 @@
 
 (def shared-resources-definition
   (create-resource-definition
-   [dns/config
-    cert-manager-crd/config
+   [cert-manager-crd/config
     gateway-api-crd/config
     traefik-crds/config
+    dns/config
+    wasabi-csi/config proxy/config secret-replicator/config
+    redis-juicefs/config
+    juicefs-csi/config
     cert-manager/config
     traefik/config
-    wasabi-csi/config proxy/config secret-replicator/config 
     harbor/config
     ]
    ["base" "init"]
@@ -72,7 +77,9 @@
 
 (def deployment-resources-definition
   (create-resource-definition
-   [#_nextcloud-service/config foundryvtt-service/config mesite-service/config productive-service/config gitea-service/config act-runner-service/config]
+   [#_nextcloud-service/config 
+    girls-foundry-service/config
+    foundryvtt-service/config mesite-service/config productive-service/config gitea-service/config act-runner-service/config]
    ["base" "init" "shared"]
    (general-provider-output-refs)))
 
