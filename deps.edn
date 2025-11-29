@@ -4,7 +4,7 @@
         #_gigiaj/pulumicljs #_{:local/root "../pulumi-clojurescript"}
         gigiaj/pulumicljs
         {:git/url "https://github.com/GigiaJ/pulumi-clojurescript.git"
-         :git/sha "50c8098cbc6d0d07837afb1e8f763a818dd376d9"
+         :git/sha "5c85ae0ae5a4f99cd6b1eaa765b6a5d9854db08f"
          }
         funcool/promesa {:mvn/version "11.0.678"}
         }}
