@@ -272,6 +272,7 @@
   {:stack [:k8s:namespace :k8s:chart :generic:execute]
    :app-namespace "vault"
    :app-name "openbao"
+   :no-namespace true
    :exec-fn  execute-fn
    :vault-load-yaml false
    :k8s:chart-opts {:repositoryOpts {:repo "https://openbao.github.io/openbao-helm"}
