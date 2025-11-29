@@ -1,5 +1,6 @@
 (ns k8s.services.foundryvtt.service)
 
+;; Need to automate license unlock
 (def config
   {:stack [:vault:prepare :harbor:robot-account :docker:image [:k8s :pvc :deployment :service :httproute]]
    :image-port     30000
