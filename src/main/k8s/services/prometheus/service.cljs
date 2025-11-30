@@ -1,12 +1,10 @@
 (ns k8s.services.prometheus.service)
 
 (def config
-  {:stack [:vault-secrets :chart]
+  {:stack [:vault:prepare :k8s:chart]
    :app-namespace "prometheus"
    :app-name      "prometheus"
-   :image-port 8080
-   :vault-load-yaml true
-   :chart-opts {:chart "kube-prometheus-stack"
+   :k8s:chart-opts {:chart "kube-prometheus-stack"
                 :repositoryOpts {:repo "https://prometheus-community.github.io/helm-charts"}
                 :namespace "monitoring"
                 :values {:grafana {:adminPassword 'password
