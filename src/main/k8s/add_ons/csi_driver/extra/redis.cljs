@@ -39,4 +39,5 @@
    {:metadata {:name "juicefs-redis" :namespace "kube-system"}
     :spec {:type "ClusterIP"
            :selector {:app "juicefs-redis"}
-           :ports [{:port 6379 :targetPort 6379}]}}})
+           :ports [{:name 'app-name
+                    :port 6379 :targetPort 6379}]}}})
