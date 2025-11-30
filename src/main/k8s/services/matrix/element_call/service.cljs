@@ -1,18 +1,26 @@
 (ns k8s.services.matrix.element-call.service)
 
-;;    volumes:
-;;      - ./personal/matrix/elementcall/config.json:/app/config.json
-
 (def config
-  {:stack [:vault-secrets :deployment :service :ingress]
+  {:stack [:vault:prepare [:k8s :config-map :deployment :service :httproute]]
    :image-port    80
    :app-namespace "matrix"
    :app-name      "element-call"
-   :deployment-opts {:spec {:template {:spec {:containers [{:name 'app-name :image '(str repo "/" app-name ":sha-1702b15")
-                                                            :volumeMounts [{:name "data" :mountPath "/data"}]}]
-                                              :initContainers [{:name "init-permissions"
-                                                                :image "busybox:latest"
-                                                                :command ["sh" "-c" "chown -R 1000:1000 /data"]
-                                                                :volumeMounts [{:name "data" :mountPath "/data"}]
-                                                                :securityContext {:runAsUser 0 :runAsGroup 0}}]
-                                              :volumes [{:name "data" :hostPath {:path "/opt/mmr/data" :type "DirectoryOrCreate"}}]}}}}})
+   :k8s:config-map-opts {:data {"config.json"
+                                '(stringify
+                                  {:default_server_config
+                                   {:m.homeserver
+                                    {:base_url (str "https://" homeserver)
+                                     :server_name homeserver}}
+                                   :features
+                                   {:feature_use_device_session_member_events true}
+                                   :ssla "https://static.element.io/legal/element-software-and-services-license-agreement-uk-1.pdf"})}}
+   :k8s:deployment-opts {:spec
+                         {:template
+                          {:spec
+                           {:volumes [{:name "config-vol"
+                                       :configMap {:name 'app-name}}]
+                            :containers [{:name 'app-name :image '(str repo "/" app-name ":latest")
+                                          :volumeMounts [{:name "config-vol"
+                                                          :mountPath "/app/config.json"
+                                                          :subPath "config.json"}]}]}}}}
+   :k8s:httproute-opts {:spec {::hostnames ['host]}}})
