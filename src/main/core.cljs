@@ -10,7 +10,8 @@
                                        initialize-resources-definition
                                        shared-resources-definition
                                        preparation-resources-definition
-                                       deployment-resources-definition]]
+                                       deployment-resources-definition
+                                       matrix-resources-definition]]
    )
   (:require-macros [pulumicljs.execution.general :refer [p->]]))
 
@@ -49,9 +50,10 @@
     #(execute
      shared-resources-definition
      (fn [output] (let [secrets (p-> output .-harbor "vault:prepare" "stringData")]
-        #js {:url (p-> secrets .-host (fn [x] (str "https://" x)))
-             :username (p-> secrets .-username)
-             :password (p-> secrets .-password)})))))
+                    #js {
+                         :url (p-> secrets .-host (fn [x] (str "https://" x)))
+                         :username (p-> secrets .-username)
+                         :password (p-> secrets .-password)})))))
 
 (def prepare-deployment-stack
   (define-stack
@@ -66,6 +68,13 @@
     "deployment"
     "/home/jaggar/dotfiles/iac"
     #(execute deployment-resources-definition (fn [output] {}))))
+
+(def matrix-stack
+  (define-stack
+    "hetzner-k3s"
+    "matrix"
+    "/home/jaggar/dotfiles/iac"
+    #(execute matrix-resources-definition (fn [output] {}))))
 
 
 (defn deploy-stack
@@ -109,9 +118,10 @@
 
           shared-outputs (deploy-stack shared-platform-stack 
                                        (conj reused-configs {:name "hetzner-k3s:apiToken" :value (-> cfg :apiToken) :secret true})
-                                       1000)
+                                       1000) 
           prepare-outputs (deploy-stack prepare-deployment-stack reused-configs 3000)
           deployment-outputs (deploy-stack deployment-stack reused-configs 2000)
+          matrix-outputs (deploy-stack matrix-stack reused-configs 2000)
 
           _ (.kill port-forward)]
     "All stacks deployed and cleaned up successfully."))
