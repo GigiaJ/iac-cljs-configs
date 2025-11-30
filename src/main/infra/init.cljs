@@ -69,7 +69,9 @@
                                       {:direction "in" :protocol "udp" :port "51820" :sourceIps ["0.0.0.0/0" "::/0"]}
                                       {:direction "in" :protocol "tcp" :port "80"    :sourceIps ["0.0.0.0/0" "::/0"]}
                                       {:direction "in" :protocol "tcp" :port "443"    :sourceIps ["0.0.0.0/0" "::/0"]}
-                                      {:direction "in" :protocol "icmp"             :sourceIps ["0.0.0.0/0" "::/0"]}]}))
+                                      {:direction "in" :protocol "icmp"             :sourceIps ["0.0.0.0/0" "::/0"]}
+                                      {:direction "in" :protocol "udp" :port "31000-31100" :sourceIps ["0.0.0.0/0" "::/0"]}
+                                      ]}))
 
         master     (hcloud/Server.
                     "k3s-master-de"
