@@ -54,6 +54,7 @@
    :k8s:service-opts
    {:spec
     {:ports
-     [{:port 80
+     [{:name 'app-name
+       :port 80
        :targetPort 80}]}}})
 
