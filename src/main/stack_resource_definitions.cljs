@@ -5,7 +5,6 @@
    [k8s.add-ons.csi-driver.hetzner :as hetzner-csi]
    [infra.dns :as dns]
    [k8s.preparers.harbor :as harbor-prepare]
-   
    [k8s.add-ons.gateway.traefik :as traefik]
    [k8s.add-ons.cert-manager :as cert-manager]
    [k8s.add-ons.crd.cert-manager :as cert-manager-crd]
@@ -23,7 +22,13 @@
    [k8s.services.act-runner.service :as act-runner-service]
    [k8s.services.foundryvtt.service :as foundryvtt-service]
    [k8s.services.foundryvtt.service-2 :as girls-foundry-service]
-   [k8s.services.productive.service :as productive-service]))
+   [k8s.services.productive.service :as productive-service]
+   [k8s.services.matrix.cinny.service :as cinny-service]
+   [k8s.services.matrix.element-call.service :as element-call-service]
+   [k8s.services.matrix.element.service :as element-service]
+   [k8s.services.matrix.element-call.livekit-server.service :as livekit-server-service]
+   [k8s.services.matrix.element-call.livekit-jwt.service :as livekit-jwt-service]
+   ))
 
 (defn general-provider-output-refs []
   {:vault  {:stack :init
@@ -77,12 +82,22 @@
 
 (def deployment-resources-definition
   (create-resource-definition
-   [girls-foundry-service/config
-    foundryvtt-service/config mesite-service/config productive-service/config gitea-service/config act-runner-service/config
-    #_nextcloud-service/config
+   [girls-foundry-service/config foundryvtt-service/config 
+    mesite-service/config productive-service/config
+    nextcloud-service/config
+    ;;gitea-service/config act-runner-service/config 
     ]
    ["base" "init" "shared"]
    (general-provider-output-refs)))
 
 
-(def deployment-matrix-service-registry [])
+(def matrix-resources-definition 
+  (create-resource-definition
+   [cinny-service/config
+    element-call-service/config
+    element-service/config
+    livekit-server-service/config
+    livekit-jwt-service/config]
+   ["base" "init" "shared"]
+   (general-provider-output-refs)))
+ 
