@@ -23,11 +23,18 @@
    [k8s.services.foundryvtt.service :as foundryvtt-service]
    [k8s.services.foundryvtt.service-2 :as girls-foundry-service]
    [k8s.services.productive.service :as productive-service]
+   [k8s.services.velero.service :as velero-service]
    [k8s.services.matrix.cinny.service :as cinny-service]
    [k8s.services.matrix.element-call.service :as element-call-service]
    [k8s.services.matrix.element.service :as element-service]
    [k8s.services.matrix.element-call.livekit-server.service :as livekit-server-service]
    [k8s.services.matrix.element-call.livekit-jwt.service :as livekit-jwt-service]
+   [k8s.services.matrix.mmr.service :as mmr-service]
+   [k8s.services.matrix.mmr.database.service :as mmr-db-service]
+   [k8s.services.matrix.mautrix-discord.database.service :as mautrix-discord-db-service]
+   [k8s.services.matrix.mautrix-discord.service :as mautrix-discord-service]
+   [k8s.services.matrix.home-server.well-known.service :as matrix-well-known-service]
+   [k8s.services.matrix.home-server.service :as homeserver-service]
    ))
 
 (defn general-provider-output-refs []
@@ -85,6 +92,7 @@
    [girls-foundry-service/config foundryvtt-service/config 
     mesite-service/config productive-service/config
     nextcloud-service/config
+    velero-service/config
     ;;gitea-service/config act-runner-service/config 
     ]
    ["base" "init" "shared"]
@@ -97,7 +105,15 @@
     element-call-service/config
     element-service/config
     livekit-server-service/config
-    livekit-jwt-service/config]
+    livekit-jwt-service/config
+    mmr-db-service/config
+    mmr-service/config
+    mautrix-discord-db-service/config
+    mautrix-discord-service/config
+    matrix-well-known-service/config
+    homeserver-service/config
+
+    ]
    ["base" "init" "shared"]
    (general-provider-output-refs)))
  
