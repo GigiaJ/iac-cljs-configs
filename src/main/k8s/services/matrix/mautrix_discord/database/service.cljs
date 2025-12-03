@@ -1,38 +1,37 @@
 (ns k8s.services.matrix.mautrix-discord.database.service)
 
 (def config
-  {:stack [:vault:prepare :k8s:pvc :k8s:config-map :k8s:deployment :k8s:service]
+  {:stack [:vault:prepare :k8s:pvc :k8s:deployment :k8s:service]
    :app-namespace "matrix"
-   :app-name      "mautrix-discord"
-   :image-port    29334
-
-   :k8s:config-map-opts
-   {:metadata {:name "discord-bridge-config"}
-    :data {"config.yaml"       "YAML-HERE" ;;TODO
-           "registration.yaml" "YAML-HERE"}}
+   :app-name      "mautrix-discord-db"
 
    :k8s:pvc-opts
-   {"discord-bridge-data" {:storageClass "juicefs-sc"
-                           :accessModes ["ReadWriteMany"]
-                           :storage "1Gi"}}
+   {:metadata {:name "mautrix-discord-pg-data"
+               :namespace "matrix"}
+    :spec {:storageClassName "hcloud-volumes"
+           :accessModes ["ReadWriteOnce"]
+           :resources {:requests {:storage "10Gi"}}}}
 
    :k8s:deployment-opts
    {:spec
     {:template
-     {:spec
+     {:metadata
+      {:annotations
+       {"backup.velero.io/backup-volumes" "db"}}
+      :spec 
       {:containers
        [{:name 'app-name
-         :image "dock.mau.dev/mautrix/discord:latest"
-         :args ["/usr/bin/mautrix-discord" "-c" "/data/config.yaml" "-r" "/data/registration.yaml"]
-
-         :volumeMounts [{:name "data"   :mountPath "/data"}
-                        {:name "config" :mountPath "/data/config.yaml" :subPath "config.yaml"}
-                        {:name "config" :mountPath "/data/registration.yaml" :subPath "registration.yaml"}]}]
+         :image "postgres:14-alpine"
+         :ports [{:containerPort 5432}]
+         :env [{:name "PGDATA" :value "/var/lib/postgresql/data/pgdata"}
+               {:name "POSTGRES_USER" :value 'username}
+               {:name "POSTGRES_PASSWORD" :value 'password}
+               {:name "POSTGRES_DB" :value 'db-name}]
+         :volumeMounts [{:name "db" :mountPath "/var/lib/postgresql/data"}]}]
 
        :volumes
-       [{:name "data" :persistentVolumeClaim {:claimName "discord-bridge-data"}}
-        {:name "config" :configMap {:name "discord-bridge-config"}}]}}}}
+       [{:name "db" :persistentVolumeClaim {:claimName "mautrix-discord-pg-data"}}]}}}}
 
    :k8s:service-opts
    {:spec {:selector {:app 'app-name}
-           :ports [{:port 29334 :targetPort 29334}]}}})
+           :ports [{:name 'app-name :port 5432 :targetPort 5432}]}}})
