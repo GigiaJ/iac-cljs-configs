@@ -2,7 +2,7 @@
 (ns k8s.services.matrix.mmr.service)
 
 (def config
-  {:stack [:vault:prepare [:k8s :config-map :deployment :service :httproute]]
+  {:stack [:vault:prepare [:k8s :config-map :deployment :service]]
    :image-port    80
    :app-namespace "matrix"
    :app-name      "matrix-media-repo"
@@ -19,7 +19,7 @@
               :accessTokens {:appservices [{:id "discord"
                                             :asToken discord-app-service-token
                                             :senderUserId discord-send-user-id
-                                            :userNamespaces {:regex user-namespace-regex}}]}
+                                            :userNamespaces [{:regex user-namespace-regex}]}]}
               :admins [admin]
               :datastores [{:type "s3"
                             :id s3-id
@@ -32,18 +32,27 @@
                                    :bucketName s3-bucket-name
                                    :region s3-region}}]
               :rateLimit {:enabled false}})}}
-   :k8s:deployment-opts {:spec {:template {:spec {:containers [{:args ["-config" "/etc/media-repo.yaml"]
-                                                                :name 'app-name
-                                                                :image '(str repo "/" app-name ":v1.3.8")
-                                                                :volumeMounts [{:name "config-vol"
-                                                                                :mountPath "/mmr"
-                                                                                :subPath "media-repo.yaml"}
-                                                                               {:name "temp-vol"
-                                                                                :mountPath "/tmp/media-repo"}]}]
-                                               :volumes [{:name "config-vol" :configMap {:name "mmr-config"}}
-                                                            {:name "temp-vol"
-                                                             :emptyDir {}}]}}}}
-   :k8s:httproute-opts {:spec {::hostnames ['host]}}})
+   :k8s:deployment-opts
+   {:spec
+    {:template
+     {:spec
+      {:containers
+       [{:name 'app-name
+         :image '(str repo "/" app-name ":v1.3.8") 
+         :command ["/usr/local/bin/media_repo"] 
+         :args ["-config" "/data/media-repo.yaml"]
+   
+         :volumeMounts [{:name "config-vol"
+                         :mountPath "/data/media-repo.yaml"
+                         :subPath "media-repo.yaml"}
+   
+                        {:name "temp-vol"
+                         :mountPath "/tmp/media-repo"}]}]
+   
+       :volumes
+       [{:name "config-vol" :configMap {:name "mmr-config"}}
+        {:name "temp-vol" :emptyDir {}}]}}}}
+   })
 
 
    
