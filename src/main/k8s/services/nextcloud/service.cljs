@@ -1,6 +1,5 @@
 (ns k8s.services.nextcloud.service)
 
-;; Need to automate set-up/restore
 (def config
   {:stack [:vault:prepare :k8s:chart :k8s:httproute]
    :app-namespace "nextcloud"
@@ -9,7 +8,8 @@
    :vault-load-yaml true
    :k8s:chart-opts {:repositoryOpts {:repo "https://nextcloud.github.io/helm/"}
                     :values
-                    {:nextcloud {:host 'host
+                    {:podAnnotations {"backup.velero.io/backup-volumes" "data"}
+                     :nextcloud {:host 'host
                                  :containerPort 80
                                  :trustedDomains ['host 'app-name]
                                  :persistence {:enabled true
@@ -17,9 +17,10 @@
                                                :accessMode "ReadWriteMany"
                                                :size "1Ti"}}
                      :service {:port 80}
-                     :mariadb {:enabled true
+                     :mariadb {:enabled true 
                                :architecture "standalone"
-                               :primary {:persistence {:enabled true
+                               :primary {:podAnnotations {"backup.velero.io/backup-volumes" "data"}
+                                         :persistence {:enabled true
                                                        :storageClass "hcloud-volumes"
                                                        :size "8Gi"}}
                                ;; Obligatory what the fuck Broadcom, why are you like this. RIP Bitnami
