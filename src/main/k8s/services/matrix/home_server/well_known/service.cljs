@@ -17,10 +17,11 @@
     {:template
      {:spec
       {:containers
-       [{:name "nginx"
-         :image "nginx:alpine"
+       [{:name 'app-name
+         :ports [{:containerPort 80}]
+         :image '(str repo "/nginx:alpine")
          :volumeMounts [{:name "config" :mountPath "/usr/share/nginx/html/.well-known/matrix"}]}]
        :volumes [{:name "config" :configMap {:name "well-known-json"}}]}}}}
 
    :k8s:service-opts
-   {:spec {:ports [{:port 80 :targetPort 80}]}}})
+   {:spec {:ports [{:name 'app-name :port 80 :targetPort 80}]}}})
