@@ -1,10 +1,10 @@
 
 {:paths ["src/main"]
  :deps {
-        #_gigiaj/pulumicljs #_{:local/root "../pulumi-clojurescript"}
+        ;;gigiaj/pulumicljs {:local/root "../pulumi-clojurescript"}
         gigiaj/pulumicljs
         {:git/url "https://github.com/GigiaJ/pulumi-clojurescript.git"
-         :git/sha "5c85ae0ae5a4f99cd6b1eaa765b6a5d9854db08f"
+         :git/sha "b7467d9da44a86a185e3bfe4307a7fe71add4134"
          }
         funcool/promesa {:mvn/version "11.0.678"}
         }}
