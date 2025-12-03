@@ -4,22 +4,29 @@
   {:stack [:vault:prepare :k8s:pvc :k8s:deployment :k8s:service]
    :app-namespace "matrix"
    :app-name      "mmr-db"
-
+   
    :k8s:pvc-opts
-   {"mmr-pg-data" {:storageClass "hcloud-volumes"
-                   :accessModes ["ReadWriteOnce"]
-                   :storage "10Gi"}}
+   {:metadata {:name "mmr-pg-data"
+               :namespace "matrix"}
+    :spec {:storageClassName "hcloud-volumes"
+           :accessModes ["ReadWriteOnce"]
+           :resources {:requests {:storage "10Gi"}}}}
 
    :k8s:deployment-opts
    {:spec
     {:template
-     {:spec
+     {:metadata
+      {:annotations
+       {"backup.velero.io/backup-volumes" "db"}}
+      :spec
       {:containers
        [{:name 'app-name
          :image "postgres:14-alpine"
-         :env [{:name "POSTGRES_USER" :value "mmr"}
-               {:name "POSTGRES_PASSWORD" :value "mmr_password"}
-               {:name "POSTGRES_DB" :value "media_repo"}]
+         :ports [{:containerPort 5432}]
+         :env [{:name "PGDATA" :value "/var/lib/postgresql/data/pgdata"}
+               {:name "POSTGRES_USER" :value 'username}
+               {:name "POSTGRES_PASSWORD" :value 'password}
+               {:name "POSTGRES_DB" :value 'db-name}]
          :volumeMounts [{:name "db" :mountPath "/var/lib/postgresql/data"}]}]
 
        :volumes
@@ -27,4 +34,4 @@
 
    :k8s:service-opts
    {:spec {:selector {:app 'app-name}
-           :ports [{:port 5432 :targetPort 5432}]}}})
+           :ports [{:name 'app-name :port 5432 :targetPort 5432}]}}})
