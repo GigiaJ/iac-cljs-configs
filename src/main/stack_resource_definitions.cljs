@@ -17,6 +17,7 @@
    [k8s.add-ons.secret-replicator :as secret-replicator]
    [k8s.add-ons.proxy :as proxy]
    [k8s.services.nextcloud.service :as nextcloud-service]
+   [k8s.services.nextcloud.database.service :as nextcloud-db-service]
    [k8s.services.mesite.service :as mesite-service]
    [k8s.services.gitea.service :as gitea-service]
    [k8s.services.act-runner.service :as act-runner-service]
@@ -34,8 +35,7 @@
    [k8s.services.matrix.mautrix-discord.database.service :as mautrix-discord-db-service]
    [k8s.services.matrix.mautrix-discord.service :as mautrix-discord-service]
    [k8s.services.matrix.home-server.well-known.service :as matrix-well-known-service]
-   [k8s.services.matrix.home-server.service :as homeserver-service]
-   ))
+   [k8s.services.matrix.home-server.service :as homeserver-service]))
 
 (defn general-provider-output-refs []
   {:vault  {:stack :init
@@ -91,9 +91,11 @@
   (create-resource-definition
    [girls-foundry-service/config foundryvtt-service/config 
     mesite-service/config productive-service/config
+    nextcloud-db-service/config
     nextcloud-service/config
     velero-service/config
-    ;;gitea-service/config act-runner-service/config 
+    gitea-service/config 
+    ;;act-runner-service/config 
     ]
    ["base" "init" "shared"]
    (general-provider-output-refs)))
